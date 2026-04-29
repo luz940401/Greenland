@@ -409,7 +409,23 @@ canvas{display:block;}
   </div>
 </div>
 
-<!-- 世界消息（移到最上面） -->
+<!-- 世界事件紀錄 -->
+<div class="panel">
+  <div class="ph">
+    <div class="ph-title">⚡ 世界事件紀錄</div>
+    <span id="evRecordCount" style="font-size:11px;color:var(--ink3)"></span>
+  </div>
+  <div style="padding:10px 14px 6px;border-bottom:1px solid var(--parch3)">
+    <input id="evSearchInput" type="text" placeholder="🔍 搜尋事件關鍵字…"
+      oninput="renderEvRecord()"
+      style="width:100%;background:rgba(255,255,255,0.5);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;">
+  </div>
+  <div class="pb" style="padding:10px 14px">
+    <div id="evRecordList" style="max-height:420px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- 世界消息 -->
 <div class="panel">
   <div class="ph"><div class="ph-title">📜 世界消息</div></div>
   <div class="pb" style="padding:10px 14px"><div class="log-box" id="logBox"></div></div>
@@ -441,22 +457,6 @@ canvas{display:block;}
 <div class="panel">
   <div class="ph"><div class="ph-title">👥 六人持倉總覽</div></div>
   <div class="pb"><div class="port-grid" id="portGrid"></div></div>
-</div>
-
-<!-- 世界事件紀錄 -->
-<div class="panel">
-  <div class="ph">
-    <div class="ph-title">⚡ 世界事件紀錄</div>
-    <span id="evRecordCount" style="font-size:11px;color:var(--ink3)"></span>
-  </div>
-  <div style="padding:10px 14px 6px;border-bottom:1px solid var(--parch3)">
-    <input id="evSearchInput" type="text" placeholder="🔍 搜尋事件關鍵字…"
-      oninput="renderEvRecord()"
-      style="width:100%;background:rgba(255,255,255,0.5);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;">
-  </div>
-  <div class="pb" style="padding:10px 14px">
-    <div id="evRecordList" style="max-height:420px;overflow-y:auto;"></div>
-  </div>
 </div>
 
 <script>
