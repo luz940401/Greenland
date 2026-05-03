@@ -963,6 +963,10 @@ function drawIntradayChart(a){
   drawSegmentedByZero(ctx,pts,P,pt=>({x:x(pt.slot),y:y(pt.price)}),2.4);
   const lp=intradayLast(P), ch=(lp.price-P.prevClose)/P.prevClose*100;
   ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(x(lp.slot),y(lp.price),4,0,Math.PI*2);ctx.fill();
+  const hiPt=pts.reduce((best,p)=>p.price>best.price?p:best,pts[0]);
+  const loPt=pts.reduce((best,p)=>p.price<best.price?p:best,pts[0]);
+  drawIntradayExtremeLabel(ctx,hiPt,'high',x,y,pad,Wd,Hd);
+  drawIntradayExtremeLabel(ctx,loPt,'low',x,y,pad,Wd,Hd);
   ctx.fillStyle='#6a4820';ctx.font='12px Noto Sans TC, sans-serif';ctx.textAlign='center';
   INTRADAY_SLOTS.forEach((s,i)=>{if(i%2===0||i===INTRADAY_SLOTS.length-1)ctx.fillText(s.replace(' 收盤',''),pad.l+i/(INTRADAY_SLOTS.length-1)*w,Hd-7);});
   ctx.textAlign='left';ctx.font='13px Noto Sans TC, sans-serif';
@@ -971,9 +975,85 @@ function drawIntradayChart(a){
   ctx.textAlign='right';ctx.font='11px Noto Sans TC, sans-serif';
   ctx.fillStyle='#c0392b';ctx.fillText(Math.round(max).toLocaleString(),pad.l-6,pad.t+4);
   ctx.fillStyle='#27ae60';ctx.fillText(Math.round(min).toLocaleString(),pad.l-6,pad.t+h);
+  bindIntradayChartEvents(c,a,P,{pad,w,h,Wd,Hd,x,y});
 }
 
 // ── 底部面板 ──
+function drawIntradayExtremeLabel(ctx,pt,type,x,y,pad,Wd,Hd){
+  const px=x(pt.slot), py=y(pt.price);
+  const isHigh=type==='high';
+  const col=isHigh?'#c0392b':'#27ae60';
+  const label=(isHigh?'高 ':'低 ')+Math.round(pt.price).toLocaleString();
+  ctx.save();
+  ctx.fillStyle=col;ctx.strokeStyle=col;ctx.lineWidth=1.4;
+  ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();
+  ctx.font='bold 11px Noto Sans TC, sans-serif';
+  const tw=ctx.measureText(label).width+12, th=20;
+  let bx=px+8, by=isHigh?py-26:py+8;
+  if(bx+tw>Wd-6)bx=px-tw-8;
+  if(by<pad.t)by=py+8;
+  if(by+th>Hd-pad.b)by=py-th-8;
+  ctx.fillStyle='rgba(245,233,206,0.94)';
+  ctx.strokeStyle=col;
+  ctx.beginPath();ctx.rect(bx,by,tw,th);ctx.fill();ctx.stroke();
+  ctx.fillStyle=col;ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(label,bx+6,by+th/2);
+  ctx.restore();
+}
+
+function bindIntradayChartEvents(c,a,P,layout){
+  c.onmousemove=e=>showIntradayTooltip(e,c,a,P,layout);
+  c.onclick=e=>showIntradayTooltip(e,c,a,P,layout);
+  c.onmouseleave=()=>{document.getElementById('chartTooltip').style.display='none';if(_chartAsset)drawIntradayChart(_chartAsset);};
+  c.ontouchstart=e=>{
+    if(!e.touches.length)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    showIntradayTooltip({clientX:t.clientX,clientY:t.clientY},c,a,P,layout);
+  };
+}
+
+function nearestIntradayPoint(e,c,P){
+  const rect=c.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(c.width/rect.width);
+  const major=(P.points||[]).filter(p=>p.major);
+  if(!major.length)return null;
+  const slotPos=(mx-58)/(Math.max(1,c.width-58-16))*(INTRADAY_SLOTS.length-1);
+  return major.reduce((best,p)=>Math.abs(p.slot-slotPos)<Math.abs(best.slot-slotPos)?p:best,major[0]);
+}
+
+function showIntradayTooltip(e,c,a,P,layout){
+  const pt=nearestIntradayPoint(e,c,P);
+  if(!pt)return;
+  drawIntradayChart(a);
+  const ctx=c.getContext('2d');
+  const px=layout.x(pt.slot), py=layout.y(pt.price);
+  ctx.save();
+  ctx.strokeStyle='rgba(58,32,16,0.55)';
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(px,layout.pad.t);ctx.lineTo(px,layout.Hd-layout.pad.b);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=pt.price>=P.prevClose?'#c0392b':'#27ae60';
+  ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  const tip=document.getElementById('chartTooltip');
+  const pct=(pt.price-P.prevClose)/P.prevClose*100;
+  const sign=pct>=0?'+':'';
+  const col=pct>=0?'#ff8080':'#5ddd5d';
+  const slotIdx=Math.max(0,Math.min(INTRADAY_SLOTS.length-1,Math.round(pt.slot)));
+  const time=INTRADAY_SLOTS[slotIdx].replace(' 收盤','');
+  tip.innerHTML=
+    `<span style="color:var(--gold);font-weight:700">${time}</span><br>`+
+    `價格 <strong style="color:${col}">${Math.round(pt.price).toLocaleString()} G</strong><br>`+
+    `漲跌 <span style="color:${col}">${sign}${pct.toFixed(2)}%</span><br>`+
+    `開盤 ${Math.round(P.prevClose).toLocaleString()} G`;
+  const rx=px/c.width;
+  tip.style.left=rx>0.6?'auto':'calc('+Math.round(rx*100)+'% + 8px)';
+  tip.style.right=rx>0.6?((1-rx)*100)+'%':'auto';
+  tip.style.top='10px';
+  tip.style.display='block';
+}
+
 function openGroupView(gid){
   const g=ensureAssetGroups(W).find(x=>x.id===gid);if(!g)return;
   const assets=g.assetIds.map(id=>W.assets.find(a=>a.id===id&&!a.delisted)).filter(Boolean);
