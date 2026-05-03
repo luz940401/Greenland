@@ -52,7 +52,7 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .mkt-spk{width:100%;height:70px;display:block;background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(237,224,181,0.18));border:1px solid rgba(222,206,150,0.65);}
 .mkt-candle{width:24px;height:58px;display:block;margin:auto;}
 .mkt-main-cell{min-width:170px;}
-.mkt-name-main{font-size:13px;font-weight:900;color:var(--ink);line-height:1.2;}
+.mkt-name-main{font-size:14px;font-weight:900;color:var(--ink);line-height:1.2;}
 .mkt-region,.mkt-facility{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mkt-facility{margin-top:2px;}
 .mkt-name-sub{font-size:10px;color:var(--ink3);margin-top:3px;line-height:1.3;}
@@ -172,11 +172,11 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
   .mkt-spk{height:70px;}
   .mkt-candle{width:20px;height:58px;}
   .mkt-main-cell{min-width:0;}
-  .mkt-name-main{font-size:12px;line-height:1.18;word-break:normal;}
+  .mkt-name-main{font-size:13px;line-height:1.18;word-break:normal;}
   .mkt-name-desktop{display:none;}
   .mkt-name-mobile{display:inline;}
-  .mkt-region{font-size:11px;color:var(--ink3);font-weight:700;}
-  .mkt-facility{font-size:12px;color:var(--ink);font-weight:900;}
+  .mkt-region{font-size:12px;color:var(--ink3);font-weight:700;}
+  .mkt-facility{font-size:13px;color:var(--ink);font-weight:900;}
   .mkt-name-sub{font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mkt-price-cell,.mkt-chg-cell{text-align:right;min-width:0;}
   .mkt-price-main{font-size:15px;line-height:1.2;}
@@ -189,9 +189,9 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
   .mkt-table tr.asset-row{grid-template-columns:20px minmax(0,1fr) 52px 58px 104px;gap:5px;min-height:96px;}
   .mkt-spk{height:62px;}
   .mkt-candle{width:18px;height:52px;}
-  .mkt-name-main{font-size:11px;}
-  .mkt-region{font-size:10px;}
-  .mkt-facility{font-size:11px;}
+  .mkt-name-main{font-size:12px;}
+  .mkt-region{font-size:11px;}
+  .mkt-facility{font-size:12px;}
   .mkt-price-main{font-size:14px;}
   .mkt-chg-main{font-size:10.5px;}
 }
@@ -753,7 +753,7 @@ function renderMkt(){
     const heldBadge=pos.qty>0?`<span style="font-size:10px;color:var(--gold2);margin-left:4px">持${pos.qty}</span>`:'';
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="mkc_${a.id}" width="24" height="58"></canvas></td>
-      <td class="mkt-main-cell"><div class="mkt-name-main">${a.icon} <span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
+      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
       <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${a.price.toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
       <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(a.price-(intradayPlan(a)?.prevClose||a.history[a.history.length-2]||a.price)).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="spk_${a.id}" width="420" height="82"></canvas></td>
