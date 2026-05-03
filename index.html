@@ -62,7 +62,7 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .daytrade-line{font-size:10px;color:var(--gold2);margin-top:3px;line-height:1.5;}
 /* 漲停跌停（台股樣式） */
 .mkt-table tr.is-limit-up td,.mkt-table tr.is-limit-dn td{background:transparent !important;}
-.mkt-table tr.is-limit-up .mkt-price-main,.mkt-table tr.is-limit-dn .mkt-price-main{display:inline-block;color:#fff!important;padding:2px 8px;line-height:1.15;min-width:58px;text-align:center;}
+.mkt-table tr.is-limit-up .mkt-price-main,.mkt-table tr.is-limit-dn .mkt-price-main{display:inline-block;color:#fff!important;padding:2px 6px;line-height:1.15;min-width:48px;text-align:center;}
 .mkt-table tr.is-limit-up .mkt-price-main{background:#e51f2d;}
 .mkt-table tr.is-limit-dn .mkt-price-main{background:#2db84d;}
 .mkt-table tr.is-limit-up .mkt-price-cell > div:not(.mkt-price-main),.mkt-table tr.is-limit-dn .mkt-price-cell > div:not(.mkt-price-main){color:var(--ink3)!important;}
@@ -161,19 +161,29 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 @media(max-width:620px){
   .mkt-table thead{display:none;}
   .mkt-table,.mkt-table tbody{display:block;width:100%;}
-  .mkt-table tr.asset-row{display:grid;grid-template-columns:28px minmax(88px,1fr) 64px 72px minmax(108px,32vw);gap:6px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--parch3);}
+  .mkt-table tr.asset-row{display:grid;grid-template-columns:24px minmax(0,1fr) 58px 64px 118px;gap:6px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--parch3);min-height:104px;}
   .mkt-table td{display:block;border-bottom:none;padding:0;min-width:0;}
   .mkt-table td.candle-col{width:auto;padding:0;}
   .mkt-table td.chart-col{min-width:0;width:100%;padding:0;}
-  .mkt-spk{height:72px;}
-  .mkt-candle{width:22px;height:54px;}
+  .mkt-spk{height:70px;}
+  .mkt-candle{width:20px;height:58px;}
   .mkt-main-cell{min-width:0;}
-  .mkt-name-main{font-size:14px;white-space:normal;word-break:keep-all;}
-  .mkt-name-sub{font-size:10px;}
+  .mkt-name-main{font-size:13px;line-height:1.25;white-space:normal;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .mkt-name-sub{font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mkt-price-cell,.mkt-chg-cell{text-align:right;min-width:0;}
-  .mkt-price-main{font-size:17px;}
-  .mkt-chg-main{font-size:12px;}
+  .mkt-price-main{font-size:15px;line-height:1.2;}
+  .mkt-chg-main{font-size:11px;line-height:1.3;}
   .tag{display:none;}
+}
+@media(max-width:430px){
+  body{padding-left:6px;padding-right:6px;}
+  .pb{padding-left:8px;padding-right:8px;}
+  .mkt-table tr.asset-row{grid-template-columns:20px minmax(0,1fr) 52px 58px 104px;gap:5px;min-height:96px;}
+  .mkt-spk{height:62px;}
+  .mkt-candle{width:18px;height:52px;}
+  .mkt-name-main{font-size:12px;}
+  .mkt-price-main{font-size:14px;}
+  .mkt-chg-main{font-size:10.5px;}
 }
 .player-card{border:1px solid var(--parch3);background:rgba(255,255,255,0.22);}
 .pcard-head{background:linear-gradient(135deg,rgba(222,206,150,0.5),rgba(237,224,181,0.3));padding:9px 12px;border-bottom:1px solid var(--parch3);}
