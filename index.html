@@ -53,11 +53,15 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .mkt-candle{width:24px;height:58px;display:block;margin:auto;}
 .mkt-main-cell{min-width:170px;}
 .mkt-name-main{font-size:13px;font-weight:900;color:var(--ink);line-height:1.2;}
-.mkt-name-sub{font-size:10px;color:var(--ink3);margin-top:2px;line-height:1.3;}
+.mkt-region,.mkt-facility{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mkt-facility{margin-top:2px;}
+.mkt-name-sub{font-size:10px;color:var(--ink3);margin-top:3px;line-height:1.3;}
 .mkt-price-cell{min-width:82px;text-align:right;}
 .mkt-price-main{font-size:16px;font-weight:900;}
 .mkt-chg-cell{min-width:78px;text-align:right;}
 .mkt-chg-main{font-size:12px;font-weight:900;line-height:1.35;}
+.mkt-name-mobile{display:none;}
+.mkt-name-desktop{display:inline;}
 .daytrade-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid var(--gold);background:rgba(184,134,11,0.08);color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:1px;}
 .daytrade-line{font-size:10px;color:var(--gold2);margin-top:3px;line-height:1.5;}
 /* 漲停跌停（台股樣式） */
@@ -168,7 +172,11 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
   .mkt-spk{height:70px;}
   .mkt-candle{width:20px;height:58px;}
   .mkt-main-cell{min-width:0;}
-  .mkt-name-main{font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;display:block;}
+  .mkt-name-main{font-size:12px;line-height:1.18;word-break:normal;}
+  .mkt-name-desktop{display:none;}
+  .mkt-name-mobile{display:inline;}
+  .mkt-region{font-size:11px;color:var(--ink3);font-weight:700;}
+  .mkt-facility{font-size:12px;color:var(--ink);font-weight:900;}
   .mkt-name-sub{font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mkt-price-cell,.mkt-chg-cell{text-align:right;min-width:0;}
   .mkt-price-main{font-size:15px;line-height:1.2;}
@@ -181,7 +189,9 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
   .mkt-table tr.asset-row{grid-template-columns:20px minmax(0,1fr) 52px 58px 104px;gap:5px;min-height:96px;}
   .mkt-spk{height:62px;}
   .mkt-candle{width:18px;height:52px;}
-  .mkt-name-main{font-size:10.5px;}
+  .mkt-name-main{font-size:11px;}
+  .mkt-region{font-size:10px;}
+  .mkt-facility{font-size:11px;}
   .mkt-price-main{font-size:14px;}
   .mkt-chg-main{font-size:10.5px;}
 }
@@ -598,6 +608,15 @@ function dayTradeBadge(assetId){
   const hit=(d.offsets||[]).some(x=>x.assetId===assetId);
   return hit?'<div class="daytrade-badge">當日沖銷</div>':'';
 }
+function assetNameHtml(name){
+  const parts=String(name||'').split(/[：:]/);
+  if(parts.length>=2){
+    const region=parts.shift().trim();
+    const facility=parts.join('：').trim();
+    return `<span class="mkt-region">${region}</span><span class="mkt-facility">${facility}</span>`;
+  }
+  return `<span class="mkt-facility">${name||''}</span>`;
+}
 
 function getPos(p,id){const raw=p.portfolio[id];if(!raw)return{qty:0,avgCost:0};if(typeof raw==='number')return{qty:raw,avgCost:0};return raw;}
 function pvOf(p){return Object.keys(p.portfolio).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?a.price*pos.qty:0);},0);}
@@ -734,7 +753,7 @@ function renderMkt(){
     const heldBadge=pos.qty>0?`<span style="font-size:10px;color:var(--gold2);margin-left:4px">持${pos.qty}</span>`:'';
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="mkc_${a.id}" width="24" height="58"></canvas></td>
-      <td class="mkt-main-cell"><div class="mkt-name-main">${a.icon} ${a.name}</div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
+      <td class="mkt-main-cell"><div class="mkt-name-main">${a.icon} <span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
       <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${a.price.toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
       <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(a.price-(intradayPlan(a)?.prevClose||a.history[a.history.length-2]||a.price)).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="spk_${a.id}" width="420" height="82"></canvas></td>
