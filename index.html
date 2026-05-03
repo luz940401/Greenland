@@ -99,6 +99,19 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .sheet-cat{font-size:11px;color:var(--ink3);margin-top:2px;}
 .sheet-close{font-size:18px;color:var(--ink3);background:none;border:1px solid var(--parch3);cursor:pointer;padding:3px 10px;flex-shrink:0;}
 .sheet-desc{margin:0 16px 10px;padding:9px 12px;background:rgba(184,134,11,0.06);border-left:3px solid var(--gold);font-size:12px;color:var(--ink3);line-height:1.7;}
+.sheet-groups{margin:0 16px 10px;display:flex;gap:6px;flex-wrap:wrap}
+.group-chip{border:1px solid var(--gold);background:rgba(184,134,11,.08);color:var(--gold2);font-family:'Noto Sans TC',sans-serif;font-size:11px;font-weight:900;padding:5px 10px;cursor:pointer}
+.group-view{position:fixed;inset:0;z-index:620;background:var(--parch);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;box-shadow:-8px 0 24px rgba(0,0,0,.35)}
+.group-view.open{transform:translateX(0)}
+.group-view-head{background:var(--parch2);border-bottom:2px solid var(--gold);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.group-back{border:1px solid var(--parch3);background:rgba(255,255,255,.35);color:var(--ink);font-size:20px;font-weight:900;width:40px;height:36px;cursor:pointer}
+.group-title{font-size:18px;font-weight:900;color:var(--ink);line-height:1.25}
+.group-sub{font-size:11px;color:var(--ink3);margin-top:2px}
+.group-chart{height:210px;border-bottom:1px solid var(--parch3);background:rgba(255,255,255,.14);padding:8px 10px}
+.group-chart canvas{width:100%;height:100%;display:block}
+.group-list{flex:1;overflow:auto}
+.group-list .mkt-table tr.asset-row{background:transparent}
+@media(max-width:620px){.group-chart{height:250px}.group-view-head{position:sticky;top:0;z-index:2}.group-list .mkt-table tr.asset-row{padding-left:8px;padding-right:8px}}
 /* 統計數據列 */
 .stat-cell{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--parch3);}
 .stat-cell:last-child{border-right:none;}
@@ -357,11 +370,12 @@ canvas{display:block;}
 
   <!-- 標的介紹 -->
   <div class="sheet-desc" id="sheetDesc"></div>
+  <div class="sheet-groups" id="sheetGroups"></div>
   <!-- 圖表工具列 -->
   <div class="chart-toolbar">
     <div class="chart-type-btns">
       <button class="ct-btn active" id="ctBtnIntraday" onclick="switchChartType('intraday')">⏱ 日內波動</button>
-      <button class="ct-btn active" id="ctBtnLine" onclick="switchChartType('line')">📈 走勢圖</button>
+      <button class="ct-btn" id="ctBtnLine" onclick="switchChartType('line')">📈 走勢圖</button>
       <button class="ct-btn" id="ctBtnCandle" onclick="switchChartType('candle')">🕯 K棒</button>
     </div>
     <div class="ma-checks" id="maChecks">
@@ -426,6 +440,23 @@ canvas{display:block;}
 
     <!-- 做空持倉列表 -->
     <div class="short-positions hidden" id="shortPositions"></div>
+  </div>
+</div>
+
+<div class="group-view" id="groupView">
+  <div class="group-view-head">
+    <button class="group-back" onclick="closeGroupView()">‹</button>
+    <div>
+      <div class="group-title" id="groupViewTitle">族群</div>
+      <div class="group-sub" id="groupViewSub"></div>
+    </div>
+  </div>
+  <div class="group-chart"><canvas id="groupViewChart"></canvas></div>
+  <div class="group-list">
+    <table class="mkt-table">
+      <thead><tr><th class="candle-col">K</th><th>股票</th><th>股價</th><th>漲跌幅</th><th class="chart-col">即時走勢</th><th>分類</th></tr></thead>
+      <tbody id="groupViewBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -522,7 +553,7 @@ canvas{display:block;}
 const URL_KEY='gran_script_url', LOCAL_KEY='gran_world_v4';
 const SEASONS=['深冬','初春','春','暮春','初夏','盛夏','暑末','初秋','金秋','暮秋','初冬','隆冬'];
 const DAILY_LIMIT=0.10;
-const INTRADAY_SLOTS=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00 收盤'];
+const INTRADAY_SLOTS=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00','00:00 收盤'];
 const BUY_FEE_RATE=0.02;
 const SELL_FEE_RATE=0.02;
 // 做空手續費設定
@@ -534,6 +565,16 @@ const ASSETS0_IDS=['watchmen','law12','roundtable','blood13','silverwing','prime
  'arcanergs','metalex','mstone','mining','ironforge','beastyard','shipyard','lumber',
  'grain','brew','harbor','northtrade','textile','spice','airtravel','landroute',
  'herb','alchemy','antimagic','temple','lifetree','adventure','prison'];
+const SECTOR_GROUPS={
+  civilian:['grain','brew','textile','herb','lifetree'],
+  military:['watchmen','law12','roundtable','blood13','silverwing','primemage','guardian','mercenary'],
+  trade:['harbor','northtrade','spice','airtravel','landroute','shipyard'],
+  magic:['archmage','spellres','magitools','arcanergs','mstone','airtravel'],
+  industrial:['ironforge','beastyard','lumber','mining','metalex'],
+  research:['relic','seyfer','archive','starobs'],
+  holy:['temple','silverwing','antimagic','lifetree']
+};
+const SECTOR_NAMES={civilian:'民生',military:'戰鬥',trade:'貿易',magic:'魔法',industrial:'工業',research:'研究',holy:'信仰醫療'};
 
 // ── 標的簡介 ──
 const ASSET_DESC={
@@ -608,6 +649,30 @@ function dayTradeBadge(assetId){
   const hit=(d.offsets||[]).some(x=>x.assetId===assetId);
   return hit?'<div class="daytrade-badge">當日沖銷</div>':'';
 }
+function groupIdFromName(name){return 'grp_'+String(name||'group').replace(/[^\w\u4e00-\u9fa5]+/g,'_').slice(0,28);}
+function defaultAssetGroups(assetList=[]){
+  const ids=new Set((assetList.length?assetList.map(a=>a.id):ASSETS0_IDS)), used=new Set(), groups=[];
+  Object.entries(SECTOR_GROUPS).forEach(([key,list])=>{
+    const assetIds=list.filter(id=>ids.has(id));
+    if(assetIds.length){groups.push({id:groupIdFromName(key),name:SECTOR_NAMES[key]||key,assetIds});assetIds.forEach(id=>used.add(id));}
+  });
+  const byCat={};
+  assetList.forEach(a=>{if(used.has(a.id))return;const k=a.cat||'未分類';(byCat[k]||(byCat[k]=[])).push(a.id);});
+  Object.entries(byCat).forEach(([name,assetIds])=>groups.push({id:groupIdFromName(name),name,assetIds}));
+  return groups;
+}
+function ensureAssetGroups(world=W){
+  if(!world)return[];
+  const activeIds=new Set((world.assets||[]).filter(a=>!a.delisted).map(a=>a.id));
+  if(!Array.isArray(world.assetGroups)||!world.assetGroups.length)world.assetGroups=defaultAssetGroups(world.assets||[]);
+  world.assetGroups=world.assetGroups.map((g,i)=>({
+    id:g.id||groupIdFromName(g.name||('group_'+i)),
+    name:g.name||('族群 '+(i+1)),
+    assetIds:[...new Set((g.assetIds||[]).filter(id=>activeIds.has(id)))]
+  })).filter(g=>g.assetIds.length);
+  return world.assetGroups;
+}
+function groupsForAsset(assetId){return ensureAssetGroups(W).filter(g=>g.assetIds.includes(assetId));}
 function assetNameHtml(name){
   const parts=String(name||'').split(/[：:]/);
   if(parts.length>=2){
@@ -676,6 +741,7 @@ function migrateAssets(world){
   if(!world.assets)world.assets=[];
   if(world.players)world.players.forEach(p=>{if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};});
   if(!world.gameDay)world.gameDay=world.gameMonth||1;
+  ensureAssetGroups(world);
   return world;
 }
 function sanitizeWorld(w){
@@ -746,7 +812,7 @@ function renderMkt(){
     const isSuspended=W.suspended&&W.suspended.includes(a.id);
     const tr=document.createElement('tr');
     tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
-    tr.onclick=()=>openSheet(a.id);
+    tr.onclick=()=>{closeGroupView();openSheet(a.id);};
     const badge=lUp?'<span class="limit-badge up">漲停</span>':lDn?'<span class="limit-badge dn">跌停</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">暫停</span>':'';
     const p=W.players[activePidx];
     const pos=p?getPos(p,a.id):{qty:0};
@@ -762,31 +828,40 @@ function renderMkt(){
     requestAnimationFrame(()=>{drawMiniCandle(a);drawSpk(a);});
   });
 }
-function drawMiniCandle(a){
-  const c=document.getElementById('mkc_'+a.id);if(!c)return;
+function drawMiniCandle(a,cid){
+  const c=document.getElementById(cid||('mkc_'+a.id));if(!c)return;
   const ctx=c.getContext('2d'), CW=c.width||24, CH=c.height||58;
   ctx.clearRect(0,0,CW,CH);
   const P=intradayPlan(a), pts=P?.points||[];
   const prev=P?.prevClose||a.history[a.history.length-2]||a.price;
-  const cur=a.price;
-  const open=prev;
+  const open=pts.length?pts[0].price:prev;
+  const cur=pts.length?pts[pts.length-1].price:a.price;
   let high=Math.max(open,cur),low=Math.min(open,cur);
   pts.forEach(pt=>{high=Math.max(high,pt.price);low=Math.min(low,pt.price);});
-  const pad=4,rng=(high-low)||1;
-  const y=v=>pad+(high-v)/rng*(CH-pad*2);
-  const col=cur>=open?'#c0392b':'#27ae60';
+  const scaleHigh=Math.max(prev*1.1,high),scaleLow=Math.min(prev*0.9,low);
+  const pad=4,rng=(scaleHigh-scaleLow)||1;
+  const y=v=>pad+(scaleHigh-v)/rng*(CH-pad*2);
+  const diff=cur-open;
+  const flat=Math.abs(diff)/Math.max(1,open)<0.001;
+  const col=flat?'#8a7a54':(diff>0?'#c0392b':'#27ae60');
   const x=CW/2, bodyW=Math.max(9,CW*.48);
   ctx.strokeStyle=col;ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(x,y(high));ctx.lineTo(x,y(low));ctx.stroke();
   const yOpen=y(open),yClose=y(cur);
-  const top=Math.min(yOpen,yClose),h=Math.max(5,Math.abs(yClose-yOpen));
-  ctx.fillStyle=col;
-  ctx.fillRect(x-bodyW/2,top,bodyW,h);
-  ctx.strokeStyle='rgba(58,32,16,.25)';ctx.lineWidth=1;
-  ctx.strokeRect(x-bodyW/2,top,bodyW,h);
+  ctx.strokeStyle=col;ctx.lineWidth=2;
+  if(flat){
+    const yy=y(cur);
+    ctx.beginPath();ctx.moveTo(x-bodyW/2,yy);ctx.lineTo(x+bodyW/2,yy);ctx.stroke();
+  }else{
+    const top=Math.min(yOpen,yClose),h=Math.max(3,Math.abs(yClose-yOpen));
+    ctx.fillStyle=col;
+    ctx.fillRect(x-bodyW/2,top,bodyW,h);
+    ctx.strokeStyle='rgba(58,32,16,.25)';ctx.lineWidth=1;
+    ctx.strokeRect(x-bodyW/2,top,bodyW,h);
+  }
 }
-function drawSpk(a){
-  const c=document.getElementById('spk_'+a.id);if(!c)return;
+function drawSpk(a,cid){
+  const c=document.getElementById(cid||('spk_'+a.id));if(!c)return;
   const ctx=c.getContext('2d');
   const P=intradayPlan(a);
   const CW=Math.max(96,Math.round(c.clientWidth||c.width||360)), CH=Math.max(44,Math.round(c.clientHeight||c.height||76));
@@ -867,7 +942,8 @@ function drawSegmentedByZero(ctx,pts,P,toXY,lineWidth){
 function drawIntradayChart(a){
   const c=document.getElementById('sheetIntradayChart');if(!c)return;
   const ctx=c.getContext('2d'), P=intradayPlan(a), pts=P?.points||[];
-  const Wd=c.clientWidth||c.width, Hd=c.height;
+  const wrap=c.parentElement;
+  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||c.width||320)-2)), Hd=c.height||360;
   c.width=Wd;
   ctx.clearRect(0,0,Wd,Hd);
   ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
@@ -898,6 +974,70 @@ function drawIntradayChart(a){
 }
 
 // ── 底部面板 ──
+function openGroupView(gid){
+  const g=ensureAssetGroups(W).find(x=>x.id===gid);if(!g)return;
+  const assets=g.assetIds.map(id=>W.assets.find(a=>a.id===id&&!a.delisted)).filter(Boolean);
+  document.getElementById('groupViewTitle').textContent=g.name;
+  const avg=assets.length?assets.reduce((s,a)=>s+intradayChg(a),0)/assets.length:0;
+  document.getElementById('groupViewSub').textContent=`${assets.length} 支標的 · 平均 ${avg>=0?'+':''}${(avg*100).toFixed(1)}%`;
+  const body=document.getElementById('groupViewBody');
+  body.innerHTML='';
+  assets.sort((a,b)=>intradayChg(b)-intradayChg(a)).forEach(a=>{
+    const ch=intradayChg(a),pct=(ch*100).toFixed(1),sign=ch>=0?'+':'',col=chCol(ch);
+    const lUp=isLimitUp(a),lDn=isLimitDn(a),isSuspended=W.suspended&&W.suspended.includes(a.id);
+    const tr=document.createElement('tr');
+    tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
+    tr.onclick=()=>{closeGroupView();openSheet(a.id);};
+    const badge=lUp?'<span class="limit-badge up">漲停</span>':lDn?'<span class="limit-badge dn">跌停</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">暫停</span>':'';
+    const base=intradayPlan(a)?.prevClose||a.history[a.history.length-2]||a.price;
+    tr.innerHTML=`
+      <td class="candle-col"><canvas class="mkt-candle" id="gmkc_${a.id}" width="24" height="58"></canvas></td>
+      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}</div></td>
+      <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${a.price.toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
+      <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(a.price-base).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
+      <td class="chart-col"><canvas class="mkt-spk" id="gspk_${a.id}" width="420" height="82"></canvas></td>
+      <td><span class="tag" style="font-size:9px">${a.cat}</span></td>`;
+    body.appendChild(tr);
+    requestAnimationFrame(()=>{drawMiniCandle(a,'gmkc_'+a.id);drawSpk(a,'gspk_'+a.id);});
+  });
+  document.getElementById('groupView').classList.add('open');
+  requestAnimationFrame(()=>drawGroupChart(assets));
+}
+function closeGroupView(){document.getElementById('groupView').classList.remove('open');}
+function drawGroupChart(assets){
+  const c=document.getElementById('groupViewChart');if(!c)return;
+  const wrap=c.parentElement,Wd=Math.max(280,Math.round((wrap?.clientWidth||320)-20)),Hd=Math.max(180,Math.round((wrap?.clientHeight||220)-16));
+  if(c.width!==Wd)c.width=Wd;if(c.height!==Hd)c.height=Hd;
+  const ctx=c.getContext('2d');ctx.clearRect(0,0,Wd,Hd);
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,Wd,Hd);
+  const pad={l:46,r:16,t:14,b:24},cw=Wd-pad.l-pad.r,ch=Hd-pad.t-pad.b,slots=INTRADAY_SLOTS.length;
+  const avg=[];
+  for(let i=0;i<slots;i++){
+    let sum=0,cnt=0;
+    assets.forEach(a=>{
+      const P=intradayPlan(a),pts=P?.points||[];
+      if(!P?.prevClose||!pts.length)return;
+      const pt=[...pts].reverse().find(p=>p.slot<=i)||pts[0];
+      if(!pt)return;
+      sum+=(pt.price-P.prevClose)/P.prevClose;cnt++;
+    });
+    if(cnt)avg.push({slot:i,chg:sum/cnt});
+  }
+  const mn=-0.10,mx=0.10,rng=mx-mn;
+  const x=s=>pad.l+(s/(slots-1))*cw,y=v=>pad.t+(mx-v)/rng*ch,baseY=y(0);
+  ctx.strokeStyle='rgba(106,72,32,.22)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const yy=pad.t+i/4*ch;ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(Wd-pad.r,yy);ctx.stroke();}
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(58,32,16,.45)';ctx.beginPath();ctx.moveTo(pad.l,baseY);ctx.lineTo(Wd-pad.r,baseY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(106,72,32,.75)';ctx.font='11px Noto Sans TC, sans-serif';ctx.textAlign='right';ctx.fillText('+10%',pad.l-5,y(.10)+4);ctx.fillText('0%',pad.l-5,baseY+4);ctx.fillText('-10%',pad.l-5,y(-.10)+4);
+  if(avg.length<2)return;
+  for(let i=1;i<avg.length;i++){
+    const a=avg[i-1],b=avg[i],aUp=a.chg>=0,bUp=b.chg>=0;
+    ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';
+    if(aUp===bUp){ctx.strokeStyle=bUp?upCol:dnCol;ctx.beginPath();ctx.moveTo(x(a.slot),y(a.chg));ctx.lineTo(x(b.slot),y(b.chg));ctx.stroke();}
+    else{const r=(0-a.chg)/(b.chg-a.chg),ms=a.slot+(b.slot-a.slot)*r;ctx.strokeStyle=aUp?upCol:dnCol;ctx.beginPath();ctx.moveTo(x(a.slot),y(a.chg));ctx.lineTo(x(ms),baseY);ctx.stroke();ctx.strokeStyle=bUp?upCol:dnCol;ctx.beginPath();ctx.moveTo(x(ms),baseY);ctx.lineTo(x(b.slot),y(b.chg));ctx.stroke();}
+  }
+  const last=avg[avg.length-1];ctx.fillStyle=last.chg>=0?upCol:dnCol;ctx.beginPath();ctx.arc(x(last.slot),y(last.chg),4,0,Math.PI*2);ctx.fill();
+}
 function sheetNavAsset(dir){
   if(!W) return;
   const active = W.assets.filter(a=>!a.delisted);
@@ -914,6 +1054,7 @@ function sheetNavAsset(dir){
 
 function openSheet(id){
   selAssetId=id;orderMode='buy';
+  _chartAsset=W?.assets.find(x=>x.id===id)||null;
   _chartOffset=0;
   _chartShowAll=true;
   document.getElementById('sheetOverlay').classList.add('open');
@@ -931,6 +1072,7 @@ function openSheetFromPort(assetId, mode, pidx){
     renderPlayerChips();
   }
   selAssetId = assetId;
+  _chartAsset=W?.assets.find(x=>x.id===assetId)||null;
   orderMode = mode;
   _chartOffset = 0;
   _chartShowAll = true;
@@ -1037,6 +1179,12 @@ function refreshSheetData(){
   const desc=(W.assetDescs&&W.assetDescs[a.id])||a.desc||ASSET_DESC[a.id]||'';
   if(desc){descEl.textContent=desc;descEl.style.display='';}
   else{descEl.style.display='none';}
+  const groupEl=document.getElementById('sheetGroups');
+  if(groupEl){
+    const groups=groupsForAsset(a.id);
+    groupEl.innerHTML=groups.map(g=>`<button class="group-chip" onclick="openGroupView('${g.id}')">${g.name}</button>`).join('');
+    groupEl.style.display=groups.length?'flex':'none';
+  }
   const lt=document.getElementById('sheetLimitTag');
   if(lUp){lt.style.display='';lt.className='sheet-limit-tag up';lt.textContent='漲停';}
   else if(lDn){lt.style.display='';lt.className='sheet-limit-tag dn';lt.textContent='跌停';}
@@ -1097,7 +1245,7 @@ function buildCandles(history,assetId){
 
   history.forEach((close,i)=>{
     const prev=i>0?history[i-1]:close;
-    const open=prev;
+    let open=prev;
     const chgPct=prev>0?(close-open)/prev:0;
     const ts=trendStrength(i);
     const r=()=>rng();
@@ -1109,12 +1257,14 @@ function buildCandles(history,assetId){
     let high,low,candleType='normal';
 
     if(isLimitUp){
-      high=r()<0.15?close*(1+r()*0.003):close;
+      open=close;
+      high=close;
       low=close;
       candleType='limit_up';
     }else if(isLimitDn){
+      open=close;
       high=close;
-      low=r()<0.15?close*(1-r()*0.003):close;
+      low=close;
       candleType='limit_dn';
     }else if(isBigUp){
       high=Math.max(open,close)+(r()<0.3?close*0.005*r():0);
@@ -1233,8 +1383,8 @@ function drawMA(ctx,maData,visible,offset,px,py,cfg){
 function drawSheetChart(a){
   const c=document.getElementById('sheetChart');
   const wrap=c.parentElement;
-  const w=wrap.clientWidth-2;
-  const H=320;
+  const w=Math.max(280,(wrap?.clientWidth||c.clientWidth||320)-2);
+  const H=360;
   c.width=w; c.height=H;
   const ctx=c.getContext('2d');
   const d=a.history;
@@ -1347,9 +1497,6 @@ function drawSheetChart(a){
       else if(isUp){strokeCol='#c0392b';fillCol='rgba(192,57,43,0.75)';}
       else{strokeCol='#27ae60';fillCol='rgba(39,174,96,0.75)';}
 
-      ctx.strokeStyle=strokeCol;ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(x,py(cd.high));ctx.lineTo(x,py(cd.low));ctx.stroke();
-
       const bodyTop=py(Math.max(cd.open,cd.close));
       const bodyBot=py(Math.min(cd.open,cd.close));
       const rawH=bodyBot-bodyTop;
@@ -1363,6 +1510,8 @@ function drawSheetChart(a){
         ctx.fillRect(x-barW/2,lineY-2,barW,4);
         ctx.shadowBlur=0;
       }else{
+        ctx.strokeStyle=strokeCol;ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,py(cd.high));ctx.lineTo(x,py(cd.low));ctx.stroke();
         const bodyH=Math.max(2,rawH);
         if(isBigUp||isBigDn){
           ctx.shadowColor=isBigUp?'rgba(192,57,43,0.4)':'rgba(39,174,96,0.4)';
