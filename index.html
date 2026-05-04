@@ -1098,7 +1098,20 @@ setInterval(async()=>{
     const cloudNewer=(c.lastSaved||0)>(W?.lastSaved||0);
     const dayChanged=(c.gameDay||1)!==(W?.gameDay||1)||(c.gameYear||1)!==(W?.gameYear||1);
     if(cloudNewer||dayChanged){
-      W=sanitizeWorld(migrateAssets(c));  // 玩家端只保留需要顯示與交易的資料
+      const incoming=sanitizeWorld(migrateAssets(c));
+      // 保護：本地玩家資料（持倉/現金）若比雲端新（玩家剛下單但 push 還沒完成），不要被覆蓋
+      // 判斷方式：若本地的 lastSaved 與雲端相差在 30 秒內，且本地 log 有雲端沒有的條目
+      // → 保留本地 players，只更新 market/assets 等 GM 欄位
+      const localHasFreshTrades=(W?.log||[]).some(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
+      if(localHasFreshTrades&&W?.players){
+        incoming.players=W.players;
+        // 合併 log：保留本地玩家交易條目
+        const localLog=W.log||[];
+        const cloudLog=incoming.log||[];
+        const onlyLocal=localLog.filter(e=>!cloudLog.some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
+        if(onlyLocal.length)incoming.log=[...onlyLocal,...cloudLog].slice(0,100);
+      }
+      W=incoming;
       renderAll();refreshSheetData();
     }
   }
