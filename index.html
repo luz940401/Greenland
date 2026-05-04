@@ -1863,7 +1863,7 @@ function drawSheetChartHighlight(hIdx){
   ctx.fillText(dayLabel,dlblX+dlblW/2,H-dlblH+13);
 
   // ── 高亮K棒外框 ──
-  const gap=cw/_chartLayout.SHOW;
+  // gap is already declared from _chartLayout above.
   const barW=Math.max(2,Math.min(14,Math.floor(gap*0.52)));
   ctx.strokeStyle='#ffffff';
   ctx.lineWidth=2;
