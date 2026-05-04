@@ -1033,7 +1033,7 @@ function mergeLogs(cloudLog=[],localLog=[]){
     if(seen.has(key))return;
     seen.add(key);merged.push(e);
   });
-  return merged.slice(0,100);
+  return merged.slice(0,200);
 }
 function mergeEventLog(cloudLog=[],localLog=[]){
   const merged=[],seen=new Set();
@@ -1054,13 +1054,25 @@ async function pushW(){
     const latest=await pull();
     if(latest){
       // 把玩家資料合併進完整資料（保留 GM 專屬欄位）
+      const localLog=W.log||[];
+      const localEventLog=W.eventLog||[];
       latest.players=W.players;
-      latest.log=mergeLogs(latest.log,W.log); // 保留 GM 公告與玩家交易 log
-      latest.eventLog=mergeEventLog(latest.eventLog,W.eventLog); // 保留事件紀錄
+      latest.log=mergeLogs(latest.log,localLog);
+      latest.eventLog=mergeEventLog(latest.eventLog,localEventLog);
+      latest.lastSaved=Date.now();
       const r=await fetch(SURL,{method:'POST',body:JSON.stringify({action:'save',world:latest})});
       const j=await r.json();
-      if(j.ok&&j.data){W=sanitizeWorld(migrateAssets(j.data));setSS('ok','已同步');}
-      else{setSS('err','失敗');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
+      if(j.ok&&j.data){
+        const saved=sanitizeWorld(migrateAssets(j.data));
+        saved.log=mergeLogs(saved.log,latest.log);
+        saved.eventLog=mergeEventLog(saved.eventLog,latest.eventLog);
+        saved.players=latest.players;
+        saved.lastSaved=Math.max(saved.lastSaved||0,latest.lastSaved||0);
+        W=saved;
+        localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
+        setSS('ok','synced');
+      }
+      else{setSS('err','save failed');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
     }else{setSS('err','無法連線');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
   }
   catch(e){setSS('err','無法連線');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
@@ -1094,24 +1106,20 @@ setInterval(async()=>{
   if(!SURL||busy)return;  // busy=true 代表玩家剛下單正在 push，此時跳過 pull 避免衝突
   const c=await pull();
   if(c){
-    // 只要雲端資料比本地新（lastSaved 較大 或 gameDay 較大），就更新
     const cloudNewer=(c.lastSaved||0)>(W?.lastSaved||0);
     const dayChanged=(c.gameDay||1)!==(W?.gameDay||1)||(c.gameYear||1)!==(W?.gameYear||1);
     if(cloudNewer||dayChanged){
       const incoming=sanitizeWorld(migrateAssets(c));
-      // 保護：本地玩家資料（持倉/現金）若比雲端新（玩家剛下單但 push 還沒完成），不要被覆蓋
-      // 判斷方式：若本地的 lastSaved 與雲端相差在 30 秒內，且本地 log 有雲端沒有的條目
-      // → 保留本地 players，只更新 market/assets 等 GM 欄位
-      const localHasFreshTrades=(W?.log||[]).some(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
-      if(localHasFreshTrades&&W?.players){
+      // ★ 保護本地玩家資料：若玩家有未上傳的交易（本地 log 有雲端沒有的 privateTrade 條目）
+      // 則保留本地 players 不被雲端覆蓋，並合併 log
+      const localPrivate=(W?.log||[]).filter(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
+      if(localPrivate.length&&W?.players){
         incoming.players=W.players;
-        // 合併 log：保留本地玩家交易條目
-        const localLog=W.log||[];
-        const cloudLog=incoming.log||[];
-        const onlyLocal=localLog.filter(e=>!cloudLog.some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
-        if(onlyLocal.length)incoming.log=[...onlyLocal,...cloudLog].slice(0,100);
       }
+      // 合併 log：保留本地玩家交易條目
+      incoming.log=mergeLogs(incoming.log,W?.log||[]);
       W=incoming;
+      localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
       renderAll();refreshSheetData();
     }
   }
