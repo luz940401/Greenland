@@ -86,6 +86,41 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .mkt-table tr.is-suspended td{background:rgba(100,100,100,0.08);}
 .mkt-table tr.is-suspended td strong,.mkt-table tr.is-suspended td span{color:#888 !important;}
 .tag{display:inline-block;padding:2px 7px;font-size:10px;font-weight:500;border:1px solid var(--gold);color:var(--gold);}
+/* 登入視窗 */
+.login-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s;}
+.login-overlay.open{opacity:1;pointer-events:auto;}
+.login-box{background:var(--parch);border:2px solid var(--gold);box-shadow:0 8px 40px rgba(0,0,0,0.6);width:100%;max-width:340px;border-radius:4px;overflow:hidden;transform:translateY(12px);transition:transform .2s;}
+.login-overlay.open .login-box{transform:translateY(0);}
+.login-head{background:var(--parch2);border-bottom:2px solid var(--gold);padding:14px 18px;display:flex;align-items:center;gap:10px;}
+.login-icon{font-size:28px;line-height:1;}
+.login-title{font-size:16px;font-weight:900;color:var(--ink);}
+.login-mode{font-size:11px;color:var(--ink3);margin-top:2px;}
+.login-body{padding:18px 18px 14px;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:11px;font-weight:700;color:var(--ink3);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
+.login-field input{width:100%;background:rgba(255,255,255,0.55);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:10px 12px;font-family:'Noto Sans TC',sans-serif;font-size:15px;outline:none;transition:border-color .15s;border-radius:2px;}
+.login-field input:focus{border-color:var(--gold);background:rgba(255,255,255,0.8);}
+.login-error{font-size:12px;color:var(--up);font-weight:700;min-height:18px;margin-bottom:10px;text-align:center;}
+.login-btn{width:100%;padding:12px;border:2px solid var(--gold);background:rgba(184,134,11,0.1);color:var(--ink);font-family:'Noto Sans TC',sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:background .2s;border-radius:2px;}
+.login-btn:hover{background:rgba(184,134,11,0.22);}
+.login-btn:active{background:rgba(184,134,11,0.32);}
+.login-cancel{display:block;text-align:center;margin-top:10px;font-size:12px;color:var(--ink3);cursor:pointer;padding:4px;}
+.login-cancel:hover{color:var(--ink);}
+/* 登入歡迎畫面 */
+.welcome-overlay{position:fixed;inset:0;background:#0a0604;z-index:900;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;opacity:0;pointer-events:none;transition:opacity .4s;}
+.welcome-overlay.open{opacity:1;pointer-events:auto;}
+.welcome-overlay.fade-out{opacity:0;transition:opacity .6s ease;}
+.welcome-org{font-size:12px;font-weight:700;letter-spacing:4px;color:var(--gold2);text-transform:uppercase;opacity:0;transform:translateY(8px);transition:opacity .5s .2s,transform .5s .2s;}
+.welcome-overlay.open .welcome-org{opacity:1;transform:translateY(0);}
+.welcome-divider{width:0;height:1px;background:var(--gold);margin:14px 0;transition:width .6s .4s ease;}
+.welcome-overlay.open .welcome-divider{width:180px;}
+.welcome-name{font-size:clamp(28px,7vw,42px);font-weight:900;color:#f5e9ce;letter-spacing:3px;opacity:0;transform:translateY(10px);transition:opacity .5s .5s,transform .5s .5s;}
+.welcome-overlay.open .welcome-name{opacity:1;transform:translateY(0);}
+.welcome-sub{font-size:12px;color:var(--ink3);letter-spacing:2px;margin-top:10px;opacity:0;transition:opacity .5s .7s;}
+.welcome-overlay.open .welcome-sub{opacity:1;}
+.welcome-badge{margin-top:28px;padding:6px 20px;border:1px solid rgba(184,134,11,0.4);background:rgba(184,134,11,0.08);color:var(--gold2);font-size:11px;font-weight:700;letter-spacing:2px;opacity:0;transition:opacity .5s .9s;}
+.welcome-overlay.open .welcome-badge{opacity:1;}
+@keyframes loginShake{0%,100%{transform:translateY(0) translateX(0)}20%{transform:translateY(0) translateX(-6px)}40%{transform:translateY(0) translateX(6px)}60%{transform:translateY(0) translateX(-4px)}80%{transform:translateY(0) translateX(4px)}}
 /* 底部滑出面板 */
 .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;opacity:0;pointer-events:none;transition:opacity .25s;}
 .sheet-overlay.open{opacity:1;pointer-events:auto;}
@@ -336,6 +371,45 @@ canvas{display:block;}
         <button class="mz-btn" onclick="mapFit()" style="font-size:12px">⊡</button>
       </div>
       <div class="map-zoom-label" id="mapZoomLabel">100%</div>
+    </div>
+  </div>
+</div>
+
+<!-- 登入歡迎畫面 -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-org" id="welcomeOrg">深水城－神之領域騎士團</div>
+  <div class="welcome-divider" id="welcomeDivider"></div>
+  <div class="welcome-name" id="welcomeName"></div>
+  <div class="welcome-sub">身份驗證完成</div>
+  <div class="welcome-badge" id="welcomeBadge">✦ 已進入交易所 ✦</div>
+</div>
+
+<!-- 登入視窗 -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box" id="loginBox">
+    <div class="login-head">
+      <div class="login-icon" id="loginIcon">👤</div>
+      <div>
+        <div class="login-title" id="loginTitle">角色登入</div>
+        <div class="login-mode" id="loginMode">請輸入帳號與密碼</div>
+      </div>
+    </div>
+    <div class="login-body">
+      <div class="login-field" id="loginAccountField">
+        <label>帳號</label>
+        <input type="text" id="loginAccount" placeholder="輸入帳號…" autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false" onkeydown="_loginKeydown(event)">
+      </div>
+      <div class="login-field" id="loginPassField">
+        <label>密碼</label>
+        <input type="password" id="loginPass" placeholder="輸入密碼…" autocomplete="current-password" onkeydown="_loginKeydown(event)">
+      </div>
+      <div class="login-field hidden" id="loginPass2Field">
+        <label>確認密碼</label>
+        <input type="password" id="loginPass2" placeholder="再輸入一次密碼…" autocomplete="new-password" onkeydown="_loginKeydown(event)">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button class="login-btn" id="loginBtn" onclick="_loginSubmit()">確認</button>
+      <span class="login-cancel" onclick="_loginCancel()">取消</span>
     </div>
   </div>
 </div>
@@ -630,6 +704,7 @@ const ASSET_DESC={
 
 let SURL=localStorage.getItem(URL_KEY)||'', W=null, busy=false;
 let activePidx=-1, selAssetId=null, orderMode='buy'; // -1 = 尚未選擇玩家
+const PLAYER_UNLOCKS=new Set();
 let orderToastTimer=null;
 
 const upCol='#c0392b', dnCol='#27ae60';
@@ -639,11 +714,60 @@ const gc=a=>{const h=a.history;return h.length<2?0:(h[h.length-1]-h[h.length-2])
 function intradayPlan(a){return W?.market?.intraday?.plans?.[a.id]||null;}
 function intradayLast(P){return P?.points?.[P.points.length-1]||null;}
 function intradayChg(a){const P=intradayPlan(a),pt=intradayLast(P);return P&&pt&&P.prevClose?(pt.price-P.prevClose)/P.prevClose:gc(a);}
+function quotePrice(a){const P=intradayPlan(a),pt=intradayLast(P);if(Number.isFinite(pt?.price))return pt.price;const h=a.history;if(h&&h.length)return h[h.length-1];return a.price;}
+function quoteBase(a){return intradayPlan(a)?.prevClose||a.history?.[a.history.length-2]||a.price;}
 const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
 const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
+const WATCH_RULES={
+  notice:{label:'\u6ce8\u610f\u80a1',cls:'notice',buy:0.75,sell:0.65,short:0.50,cover:0.65},
+  disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
+};
+function recentGain(a,days){
+  const h=a.history||[];
+  if(h.length<=days)return 0;
+  const old=h[h.length-1-days], now=h[h.length-1];
+  return old>0?(now-old)/old:0;
+}
+function tradeWatchInfo(a){
+  const g3=recentGain(a,3), g5=recentGain(a,5), g10=recentGain(a,10), today=intradayChg(a);
+  if(g3>=0.28||g5>=0.45||g10>=0.80)return WATCH_RULES.disposition;
+  if(g3>=0.18||g5>=0.30||g10>=0.55||today>=0.08)return WATCH_RULES.notice;
+  return null;
+}
+function tradeModeRate(info,mode){return info?Math.max(0,Math.min(1,info[mode]??1)):1;}
+function tradeModeText(mode){return mode==='buy'?'\u8cb7\u9032':mode==='sell'?'\u8ce3\u51fa':mode==='short'?'\u653e\u7a7a':'\u56de\u88dc';}
+function tradeHourKey(a){
+  const pt=intradayLast(intradayPlan(a));
+  const slot=Number.isFinite(pt?.slot)?Math.floor(pt.slot):new Date().getHours();
+  return `${W?.gameYear||1}-${W?.gameDay||1}-${slot}`;
+}
+function tryWatchTrade(a,mode,p=W?.players?.[activePidx]){
+  const info=tradeWatchInfo(a);
+  if(!info)return true;
+  if(!p)return false;
+  const key=tradeHourKey(a);
+  if(!p.watchTradeLocks)p.watchTradeLocks={};
+  if(p.watchTradeLocks[a.id]===key){
+    showOrderToast(`${info.label} ${a.name} \u672c\u5c0f\u6642\u5df2\u59d4\u8a17\u904e`,false);
+    return false;
+  }
+  p.watchTradeLocks[a.id]=key;
+  const rate=tradeModeRate(info,mode);
+  if(Math.random()<rate)return true;
+  showOrderToast(`${info.label} ${a.name} ${tradeModeText(mode)}\u672a\u6210\u4ea4`,false);
+  if(typeof pushW==='function')pushW();
+  return false;
+}
+function watchBadge(a){
+  const info=tradeWatchInfo(a);
+  if(!info)return '';
+  const bg=info.cls==='disposition'?'#7b2d12':'#b8860b';
+  return `<span class="limit-badge" style="background:${bg};color:#fff">${info.label}</span>`;
+}
 const tradeDayKey=()=>`${W?.gameYear||1}-${W?.gameDay||1}`;
 function ensureDayTrades(p){if(!p.dayTrades)p.dayTrades={};const k=tradeDayKey();if(!p.dayTrades[k])p.dayTrades[k]={buys:{},offsets:[]};return p.dayTrades[k];}
 function dayTradeBadge(assetId){
+  if(!isPlayerUnlocked(activePidx))return '';
   const p=W?.players?.[activePidx];if(!p||!p.dayTrades)return '';
   const d=p.dayTrades[tradeDayKey()];if(!d)return '';
   const hit=(d.offsets||[]).some(x=>x.assetId===assetId);
@@ -683,10 +807,197 @@ function assetNameHtml(name){
   return `<span class="mkt-facility">${name||''}</span>`;
 }
 
+function isPlayerUnlocked(i){return i>=0&&PLAYER_UNLOCKS.has(String(i));}
+function accountKey(v){return String(v||'').trim().toLowerCase();}
+function isAccountTaken(account,selfIndex){
+  const key=accountKey(account);
+  if(!key)return false;
+  return (W?.players||[]).some((p,idx)=>idx!==selfIndex&&accountKey(p.accountPlain)===key);
+}
+async function hashPlayerPassword(pass){
+  let h=2166136261;
+  const s=String(pass||'');
+  for(let i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);
+    h=Math.imul(h,16777619);
+  }
+  return 'p1:'+(h>>>0).toString(16).padStart(8,'0');
+}
+// ── 登入 Modal ──
+let _loginResolve=null;
+
+function _showLoginModal({icon,name,mode,showAccount=true,showPass=true,showPass2=false}){
+  document.getElementById('loginIcon').textContent=icon||'👤';
+  document.getElementById('loginTitle').textContent=name||'角色登入';
+  document.getElementById('loginMode').textContent=mode||'';
+  document.getElementById('loginError').textContent='';
+  document.getElementById('loginAccountField').style.display=showAccount?'':'none';
+  document.getElementById('loginPassField').style.display=showPass?'':'none';
+  document.getElementById('loginPass2Field').style.display=showPass2?'':'none';
+  document.getElementById('loginAccount').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginPass2').value='';
+  document.getElementById('loginOverlay').classList.add('open');
+  setTimeout(()=>{
+    if(showAccount)document.getElementById('loginAccount').focus();
+    else if(showPass)document.getElementById('loginPass').focus();
+  },120);
+  return new Promise(res=>{_loginResolve=res;});
+}
+function _loginSetError(msg){
+  document.getElementById('loginError').textContent=msg||'';
+}
+function _closeLoginModal(){
+  document.getElementById('loginOverlay').classList.remove('open');
+  _loginResolve=null;
+}
+function _loginCancel(){
+  _closeLoginModal();
+  if(_loginResolve){const r=_loginResolve;_loginResolve=null;r(null);}
+}
+function _loginSubmit(){
+  if(!_loginResolve)return;
+  const r=_loginResolve;
+  r({
+    account:document.getElementById('loginAccount').value.trim(),
+    pass:document.getElementById('loginPass').value,
+    pass2:document.getElementById('loginPass2').value,
+  });
+}
+// Enter 鍵送出（綁定在 HTML oninput 事件）
+function _loginKeydown(e){if(e.key==='Enter'){e.preventDefault();_loginSubmit();}}
+
+
+// ── 登入歡迎畫面 ──
+const PLAYER_TITLES = {
+  '穗道忠武': '團長　穗道忠武',
+  '黑皮諾':   '副團長　黑皮諾',
+  '北腳爸爸': '軍長　北腳爸爸',
+  '小泉理莎': '騎士　小泉理莎',
+  '富貴人家': '騎士　富貴人家',
+  '所羅門':   '騎士　所羅門',
+  '帕拉丁':   '聖騎士　帕拉丁',
+};
+function showWelcome(playerName){
+  const ov=document.getElementById('welcomeOverlay');
+  const nameEl=document.getElementById('welcomeName');
+  nameEl.textContent=PLAYER_TITLES[playerName]||playerName;
+  ov.classList.remove('fade-out');
+  ov.classList.add('open');
+  // 2.2 秒後淡出
+  setTimeout(()=>{
+    ov.classList.add('fade-out');
+    setTimeout(()=>{ov.classList.remove('open','fade-out');},650);
+  },2200);
+}
+// 用 Promise 控制 modal 的「顯示 → 等待輸入 → 顯示錯誤 → 再等待」循環
+// _showLoginModal 顯示 modal 並回傳 Promise
+// _loginSubmit 呼叫時 resolve Promise（帶輸入值）
+// _loginCancel 呼叫時 resolve Promise（帶 null）
+// 錯誤時直接呼叫 _loginSetError，不關 modal，讓使用者直接修改後再按確認
+
+async function _promptLogin(opts){
+  // 顯示 modal，等使用者按確認或取消
+  return _showLoginModal(opts);
+}
+
+async function registerPlayerLogin(p,i){
+  // 顯示一次 modal，錯誤時不關閉，直接改錯誤訊息讓玩家重試
+  _showLoginModal({
+    icon:p.icon||'👤', name:p.name,
+    mode:'第一次使用，請設定帳號與密碼',
+    showAccount:true, showPass:true, showPass2:true
+  });
+  while(true){
+    const res=await new Promise(r=>{_loginResolve=r;});
+    if(!res){_closeLoginModal();return false;}
+    if(!res.account){_loginSetError('帳號不能空白');continue;}
+    if(isAccountTaken(res.account,i)){_loginSetError('這個帳號已被使用，請換一個');continue;}
+    if(!res.pass){_loginSetError('密碼不能空白');continue;}
+    if(res.pass!==res.pass2){_loginSetError('兩次密碼不一致，請重新輸入');continue;}
+    _closeLoginModal();
+    p.accountPlain=res.account;
+    p.passPlain=res.pass;
+    p.passHash=await hashPlayerPassword(res.pass);
+    return true;
+  }
+}
+async function unlockPlayer(i){
+  const p=W?.players?.[i];if(!p)return false;
+  if(isPlayerUnlocked(i))return true;
+  if(p.account&&!p.accountPlain)p.accountPlain=p.account;
+  if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;
+  if(p.passPlain&&!p.passHash)p.passHash=await hashPlayerPassword(p.passPlain);
+  if(!p.passHash){
+    const ok=await registerPlayerLogin(p,i);
+    if(!ok)return false;
+    PLAYER_UNLOCKS.add(String(i));activePidx=i;await pushW();return true;
+  }
+  if(!p.accountPlain){
+    // 有 hash 但沒帳號（舊版資料）→ 先驗密碼再設帳號
+    _showLoginModal({
+      icon:p.icon||'👤', name:p.name,
+      mode:'請輸入密碼，並設定帳號',
+      showAccount:true, showPass:true, showPass2:false
+    });
+    while(true){
+      const res=await new Promise(r=>{_loginResolve=r;});
+      if(!res){_closeLoginModal();return false;}
+      const h=await hashPlayerPassword(res.pass);
+      if(h!==p.passHash){_loginSetError('密碼錯誤');continue;}
+      if(!res.account){_loginSetError('帳號不能空白');continue;}
+      if(isAccountTaken(res.account,i)){_loginSetError('這個帳號已被使用');continue;}
+      _closeLoginModal();
+      p.accountPlain=res.account.trim();
+      p.passPlain=res.pass;  // 補存明文，讓 GM 看得到
+      PLAYER_UNLOCKS.add(String(i));activePidx=i;await pushW();return true;
+    }
+  }
+  // 正常登入
+  _showLoginModal({
+    icon:p.icon||'👤', name:p.name,
+    mode:'請輸入帳號與密碼',
+    showAccount:true, showPass:true, showPass2:false
+  });
+  while(true){
+    const res=await new Promise(r=>{_loginResolve=r;});
+    if(!res){_closeLoginModal();return false;}
+    if(accountKey(res.account)!==accountKey(p.accountPlain)){_loginSetError('帳號錯誤');continue;}
+    const h=await hashPlayerPassword(res.pass);
+    if(h!==p.passHash){_loginSetError('密碼錯誤');continue;}
+    _closeLoginModal();
+    if(!p.passPlain){
+      p.passPlain=res.pass;  // 補存明文，讓 GM 看得到
+      await pushW();         // 立即存回雲端
+    }
+    PLAYER_UNLOCKS.add(String(i));activePidx=i;return true;
+  }
+}
+async function selectPlayer(i){
+  if(isPlayerUnlocked(i)){
+    if(activePidx===i){
+      PLAYER_UNLOCKS.delete(String(i));
+      activePidx=-1;
+    }else activePidx=i;
+  }else{
+    const ok=await unlockPlayer(i);
+    if(!ok)return;
+    // 登入成功 → 顯示歡迎畫面
+    const p=W?.players?.[i];
+    if(p)showWelcome(p.name);
+  }
+  renderAll();
+  refreshSheetData();
+}
+function requireActiveUnlock(){
+  if(activePidx===-1){showOrderToast('\u26a0 \u8acb\u5148\u9078\u64c7\u64cd\u4f5c\u89d2\u8272',false);return false;}
+  if(!isPlayerUnlocked(activePidx)){showOrderToast('\u26a0 \u8acb\u5148\u8f38\u5165\u89d2\u8272\u5bc6\u78bc',false);return false;}
+  return true;
+}
 function getPos(p,id){const raw=p.portfolio[id];if(!raw)return{qty:0,avgCost:0};if(typeof raw==='number')return{qty:raw,avgCost:0};return raw;}
-function pvOf(p){return Object.keys(p.portfolio).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?a.price*pos.qty:0);},0);}
+function pvOf(p){return Object.keys(p.portfolio).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
 function totalCost(p){return Object.keys(p.portfolio).reduce((s,id)=>{const pos=getPos(p,id);return s+(pos.avgCost*pos.qty);},0);}
-function shortPnL(s){const a=W?.assets.find(x=>x.id===s.assetId);if(!a)return 0;return s.shortQty*(s.entryPrice-a.price);}
+function shortPnL(s){const a=W?.assets.find(x=>x.id===s.assetId);if(!a)return 0;return s.shortQty*(s.entryPrice-quotePrice(a));}
 function shortPnLPct(s){return s.principal>0?shortPnL(s)/s.principal*100:0;}
 
 // ── 同步 ──
@@ -739,7 +1050,7 @@ async function pushW(){
 }
 function migrateAssets(world){
   if(!world.assets)world.assets=[];
-  if(world.players)world.players.forEach(p=>{if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};});
+  if(world.players)world.players.forEach(p=>{if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};if(!p.watchTradeLocks)p.watchTradeLocks={};if(p.password&&!p.passPlain)p.passPlain=p.password;if(p.account&&!p.accountPlain)p.accountPlain=p.account;if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;if(p.passPlain&&!p.passHash)p.passHash='';delete p.password;delete p.account;delete p.loginAccount;});
   if(!world.gameDay)world.gameDay=world.gameMonth||1;
   ensureAssetGroups(world);
   return world;
@@ -797,8 +1108,9 @@ function renderPlayerChips(){
   W.players.forEach((p,i)=>{
     const btn=document.createElement('button');
     btn.className='pchip'+(i===activePidx?' active':'');
-    btn.innerHTML=`${p.name}<span class="pchip-cash">${p.cash.toLocaleString()} G</span>`;
-    btn.onclick=()=>{activePidx=i;renderPlayerChips();refreshSheetData();};
+    const unlocked=isPlayerUnlocked(i);
+    btn.innerHTML=`${p.name}<span class="pchip-cash">${unlocked?(p.cash.toLocaleString()+' G'):'\u5df2\u9396\u5b9a'}</span>`;
+    btn.onclick=()=>selectPlayer(i);
     el.appendChild(btn);
   });
 }
@@ -813,15 +1125,15 @@ function renderMkt(){
     const tr=document.createElement('tr');
     tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
     tr.onclick=()=>{closeGroupView();openSheet(a.id);};
-    const badge=lUp?'<span class="limit-badge up">漲停</span>':lDn?'<span class="limit-badge dn">跌停</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">暫停</span>':'';
-    const p=W.players[activePidx];
+const badge=(lUp?'<span class="limit-badge up">\u6f32\u505c</span>':lDn?'<span class="limit-badge dn">\u8dcc\u505c</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">\u505c\u724c</span>':'')+watchBadge(a);
+    const p=isPlayerUnlocked(activePidx)?W.players[activePidx]:null;
     const pos=p?getPos(p,a.id):{qty:0};
     const heldBadge=pos.qty>0?`<span style="font-size:10px;color:var(--gold2);margin-left:4px">持${pos.qty}</span>`:'';
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="mkc_${a.id}" width="24" height="58"></canvas></td>
       <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
-      <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${a.price.toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
-      <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(a.price-(intradayPlan(a)?.prevClose||a.history[a.history.length-2]||a.price)).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
+      <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${quotePrice(a).toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
+      <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(quotePrice(a)-quoteBase(a)).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="spk_${a.id}" width="420" height="82"></canvas></td>
       <td><span class="tag" style="font-size:9px">${a.cat}</span></td>`;
     tb.appendChild(tr);
@@ -842,8 +1154,8 @@ function drawMiniCandle(a,cid){
   const pad=4,rng=(scaleHigh-scaleLow)||1;
   const y=v=>pad+(scaleHigh-v)/rng*(CH-pad*2);
   const diff=cur-open;
-  const flat=Math.abs(diff)/Math.max(1,open)<0.001;
-  const col=flat?'#8a7a54':(diff>0?'#c0392b':'#27ae60');
+  const flat=Math.abs(intradayChg(a))<0.001;
+  const col=flat?'#8a7a54':(intradayChg(a)>0?'#c0392b':'#27ae60');
   const x=CW/2, bodyW=Math.max(9,CW*.48);
   ctx.strokeStyle=col;ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(x,y(high));ctx.lineTo(x,y(low));ctx.stroke();
@@ -891,7 +1203,9 @@ function drawSpk(a,cid){
     ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fill();
     return;
   }
-  const d=a.history.slice(-20);
+  const raw=a.history.slice(-20);
+  const cur=quotePrice(a);
+  const d=(cur!==raw[raw.length-1])?[...raw,cur]:raw;
   const mn=Math.min(...d),mx=Math.max(...d),rng=mx-mn||1;
   ctx.strokeStyle=chCol(gc(a));ctx.lineWidth=1.5;ctx.beginPath();
   d.forEach((v,i)=>{const x=(i/(d.length-1))*CW,y=(CH-4)-((v-mn)/rng)*(CH-8);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
@@ -1068,13 +1382,13 @@ function openGroupView(gid){
     const tr=document.createElement('tr');
     tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
     tr.onclick=()=>{closeGroupView();openSheet(a.id);};
-    const badge=lUp?'<span class="limit-badge up">漲停</span>':lDn?'<span class="limit-badge dn">跌停</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">暫停</span>':'';
-    const base=intradayPlan(a)?.prevClose||a.history[a.history.length-2]||a.price;
+const badge=(lUp?'<span class="limit-badge up">\u6f32\u505c</span>':lDn?'<span class="limit-badge dn">\u8dcc\u505c</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">\u505c\u724c</span>':'')+watchBadge(a);
+    const base=quoteBase(a);
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="gmkc_${a.id}" width="24" height="58"></canvas></td>
       <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}</div></td>
-      <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${a.price.toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
-      <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(a.price-base).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
+      <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${quotePrice(a).toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
+      <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(quotePrice(a)-base).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="gspk_${a.id}" width="420" height="82"></canvas></td>
       <td><span class="tag" style="font-size:9px">${a.cat}</span></td>`;
     body.appendChild(tr);
@@ -1148,6 +1462,7 @@ function openSheet(id){
 function openSheetFromPort(assetId, mode, pidx){
   // 切換到該持倉的玩家
   if(pidx >= 0 && pidx !== activePidx){
+    if(!isPlayerUnlocked(pidx)){showOrderToast('\u26a0 \u8acb\u5148\u8f38\u5165\u8a72\u89d2\u8272\u5bc6\u78bc',false);return;}
     activePidx = pidx;
     renderPlayerChips();
   }
@@ -1214,21 +1529,21 @@ function switchTab(mode){
 function refreshSheetData(){
   if(!selAssetId||!W)return;
   const a=W.assets.find(x=>x.id===selAssetId);if(!a||a.delisted)return;
-  const ch=gc(a),pct=(ch*100).toFixed(2),sign=ch>=0?'+':'',col=chCol(ch);
+  const ch=intradayChg(a),pct=(ch*100).toFixed(2),sign=ch>=0?'+':'',col=chCol(ch);
   const lUp=isLimitUp(a),lDn=isLimitDn(a);
   document.getElementById('sheetIcon').textContent=a.icon;
   document.getElementById('sheetName').textContent=a.name;
   document.getElementById('sheetCat').textContent=a.cat;
-  document.getElementById('sheetPrice').textContent=a.price.toLocaleString()+' G';
+  document.getElementById('sheetPrice').textContent=quotePrice(a).toLocaleString()+' G';
   document.getElementById('sheetPrice').style.color=col;
   document.getElementById('sheetChg').textContent=sign+pct+'%';
   document.getElementById('sheetChg').style.color=col;
 
   // ── 統計數據列 ──
   const h=a.history;
-  const hi=Math.max(...h), lo=Math.min(...h);
+  const curPrice=quotePrice(a); const hi=Math.max(...h,curPrice), lo=Math.min(...h,curPrice);
   const first=h[0];
-  const totalChg=(a.price-first)/first*100;
+  const totalChg=(curPrice-first)/first*100;
   const totalSign=totalChg>=0?'+':'';
   const totalCol=chCol(totalChg);
   document.getElementById('sheetStats').innerHTML=`
@@ -1236,7 +1551,7 @@ function refreshSheetData(){
     <div class="stat-cell"><div class="stat-val" style="color:${dnCol}">${lo.toLocaleString()} G</div><div class="stat-lbl">歷史最低</div></div>
     <div class="stat-cell"><div class="stat-val">${first.toLocaleString()} G</div><div class="stat-lbl">起始價</div></div>
     <div class="stat-cell"><div class="stat-val" style="color:${totalCol}">${totalSign}${totalChg.toFixed(1)}%</div><div class="stat-lbl">總漲跌幅</div></div>
-    <div class="stat-cell"><div class="stat-val">${h.length} 日</div><div class="stat-lbl">記錄天數</div></div>`;
+    <div class="stat-cell"><div class="stat-val">${W.gameDay||h.length} 日</div><div class="stat-lbl">記錄天數</div></div>`;
 
   // ── 區間漲幅 ──
   const ranges=[
@@ -1248,7 +1563,7 @@ function refreshSheetData(){
     if(h.length<2)return'';
     const startIdx=Math.max(0,h.length-1-r.days);
     const startPrice=h[startIdx];
-    const chg=(a.price-startPrice)/startPrice*100;
+    const chg=(curPrice-startPrice)/startPrice*100;
     const s=chg>=0?'+':'';const c=chCol(chg);
     return `<div class="range-chip"><span class="rc-lbl">${r.lbl}</span><span class="rc-val" style="color:${c}">${s}${chg.toFixed(1)}%</span></div>`;
   }).join('');
@@ -1266,19 +1581,23 @@ function refreshSheetData(){
     groupEl.style.display=groups.length?'flex':'none';
   }
   const lt=document.getElementById('sheetLimitTag');
-  if(lUp){lt.style.display='';lt.className='sheet-limit-tag up';lt.textContent='漲停';}
-  else if(lDn){lt.style.display='';lt.className='sheet-limit-tag dn';lt.textContent='跌停';}
-  else lt.style.display='none';
+  if(lUp){lt.style.display='';lt.className='sheet-limit-tag up';lt.textContent='\u6f32\u505c';}
+  else if(lDn){lt.style.display='';lt.className='sheet-limit-tag dn';lt.textContent='\u8dcc\u505c';}
+  else{
+    const wi=tradeWatchInfo(a);
+    if(wi){lt.style.display='';lt.className='sheet-limit-tag';lt.style.background=wi.cls==='disposition'?'#7b2d12':'#b8860b';lt.style.color='#fff';lt.textContent=wi.label;}
+    else{lt.style.display='none';lt.style.background='';lt.style.color='';}
+  }
   switchChartType(_chartType||'intraday');
   // 玩家資訊
   const p=W.players[activePidx];
-  if(!p){
+  if(!p||!isPlayerUnlocked(activePidx)){
     // 未選玩家：顯示警告，鎖住下單區
-    document.getElementById('spbName').innerHTML='<span style="color:var(--up);font-weight:700">⚠ 請先選擇操作角色</span>';
+    document.getElementById('spbName').innerHTML='<span style="color:var(--up);font-weight:700">\u26a0 \u8acb\u9078\u64c7\u4e26\u89e3\u9396\u64cd\u4f5c\u89d2\u8272</span>';
     document.getElementById('spbCash').textContent='──';
     document.getElementById('spbHeld').textContent='';
     document.getElementById('mainActionBtn').disabled=true;
-    document.getElementById('mainActionBtn').textContent='⚠ 請先選擇角色';
+    document.getElementById('mainActionBtn').textContent='\u26a0 \u8acb\u5148\u89e3\u9396\u89d2\u8272';
     document.getElementById('qtyTotal').innerHTML='合計：<strong>──</strong>';
     return;
   }
@@ -1470,16 +1789,22 @@ function drawSheetChart(a){
   const d=a.history;
   if(d.length<2){ctx.clearRect(0,0,w,H);return;}
 
+  // 今日K棒：以 quoteBase（= P.prevClose，即昨日收盤）為 open，quotePrice 為 close
+  // 這樣今日K棒的漲跌幅與市場列表的 intradayChg 完全一致
+  const todayPrice=quotePrice(a);
+  const lastHist=d[d.length-1];
+  // 今日即時價直接接在 history 後面，不切除任何 history
+  const dWithToday=(todayPrice!==lastHist)?[...d,todayPrice]:d;
   const prevLen=_chartLastLenByAsset[a.id]||0;
-  if(d.length!==prevLen){
-    if(d.length>prevLen){
+  if(dWithToday.length!==prevLen){
+    if(dWithToday.length>prevLen){
       _chartOffset=0;
-      if(_chartShowAll)_chartZoom=d.length;
+      if(_chartShowAll)_chartZoom=dWithToday.length;
     }
-    _chartLastLenByAsset[a.id]=d.length;
+    _chartLastLenByAsset[a.id]=dWithToday.length;
   }
 
-  const candles=buildCandles(d,a.id);
+  const candles=buildCandles(dWithToday,a.id);
   _chartAsset=a; _chartCandles=candles;
 
   const pl=52,pr=10,pt=26,pb=34;
@@ -1495,9 +1820,9 @@ function drawSheetChart(a){
   const visible=candles.slice(startIdx,endIdx);
   const offset=startIdx;
 
-  // 計算 y 範圍
+  // 計算 y 範圍（MA 用 dWithToday）
   const maArrays={};
-  _maActive.forEach(p=>{maArrays[p]=calcMA(d,p);});
+  _maActive.forEach(p=>{maArrays[p]=calcMA(dWithToday,p);});
 
   let allVals=[...visible.map(c=>c.high),...visible.map(c=>c.low)];
   _maActive.forEach(p=>{
@@ -1550,8 +1875,8 @@ function drawSheetChart(a){
   }
 
   if(_chartType==='line'){
-    const col=chCol(gc(a));
-    const rgb=gc(a)>=0?'192,57,43':'39,174,96';
+    const col=chCol(intradayChg(a));
+    const rgb=intradayChg(a)>=0?'192,57,43':'39,174,96';
     const grad=ctx.createLinearGradient(0,pt,0,pt+ch);
     grad.addColorStop(0,`rgba(${rgb},0.22)`);grad.addColorStop(1,`rgba(${rgb},0.01)`);
     ctx.beginPath();
@@ -1882,7 +2207,7 @@ function updateOrderTotal(){
   const q=parseInt(document.getElementById('qtyInput')?.value)||0;
   const el=document.getElementById('qtyTotal');if(!el)return;
   if(!a){el.innerHTML='合計：<strong>──</strong>';return;}
-  const total=a.price*q;
+  const total=quotePrice(a)*q;
   if(orderMode==='short'){
     const fee7=total*SHORT_FEE_DAILY*7;
     const fee30=total*SHORT_FEE_DAILY*30;
@@ -1913,13 +2238,14 @@ function renderShortPositions(){
       <button class="btn-close-short" onclick="closeShort(${i})">平倉</button>
     </div>
     <div style="font-size:11px;color:var(--ink3);margin-top:4px">
-      進場 ${s.entryPrice.toLocaleString()}G・現價 ${a.price.toLocaleString()}G・持有 ${s.daysHeld||0} 日・日費 2%・本金 ${s.principal.toLocaleString()}G
+      進場 ${s.entryPrice.toLocaleString()}G・現價 ${quotePrice(a).toLocaleString()}G・持有 ${s.daysHeld||0} 日・日費 2%・本金 ${s.principal.toLocaleString()}G
     </div>`;
     el.appendChild(div);
   });
 }
 
 function closeShort(idx){
+  if(!requireActiveUnlock())return;
   const p=W.players[activePidx];if(!p||!p.shorts[idx])return;
   const s=p.shorts[idx];
   const a=W.assets.find(x=>x.id===s.assetId);if(!a)return;
@@ -1933,6 +2259,7 @@ function closeShort(idx){
   if(isLimitUp(a)){
     showOrderToast(`⛔ ${a.name} 漲停中，無法平倉（買不到）`,false);return;
   }
+  if(!tryWatchTrade(a,'cover',p))return;
 
   const pnl=shortPnL(s);
   p.cash+=s.principal+pnl;
@@ -1942,7 +2269,7 @@ function closeShort(idx){
   const msg=`${p.name} 平倉《${a.name}》空單，損益 ${sign}${Math.round(pnl).toLocaleString()} G`;
   showOrderToast(`✓ ${msg}`,pnl>=0);
   if(!W.log)W.log=[];
-  W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:msg,type:pnl>=0?'good':'bad'});
+  W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnl>=0?'good':'bad'});
   renderAll();refreshSheetData();pushW();
 }
 
@@ -1958,12 +2285,12 @@ function showOrderToast(msg,ok){
 // ── 主要下單操作 ──
 async function doMainAction(){
   if(!selAssetId||busy)return;
-  if(activePidx===-1){showOrderToast('⚠ 請先選擇操作角色！',false);return;}
+  if(!requireActiveUnlock())return;
   const a=W.assets.find(x=>x.id===selAssetId);if(!a||a.delisted)return;
   if(W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
   const q=parseInt(document.getElementById('qtyInput').value)||0;if(q<=0)return;
   const p=W.players[activePidx];
-  const total=a.price*q;
+  const total=quotePrice(a)*q;
   const pos=getPos(p,a.id);
   const timeTag=`${W.gameYear||1}年第${W.gameDay||1}日`;
   if(!W.log)W.log=[];
@@ -1973,16 +2300,18 @@ async function doMainAction(){
     const fee=Math.round(total*BUY_FEE_RATE);
     const payable=total+fee;
     if(p.cash<payable){showOrderToast(`${p.name} 資金不足！需 ${payable.toLocaleString()} G（含手續費），僅有 ${p.cash.toLocaleString()} G`,false);return;}
+    if(!tryWatchTrade(a,'buy',p))return;
     const nq=pos.qty+q;const na=((pos.qty*pos.avgCost)+payable)/nq;
     p.cash-=payable;p.portfolio[a.id]={qty:nq,avgCost:Math.round(na*100)/100};
     const d=ensureDayTrades(p);d.buys[a.id]=(d.buys[a.id]||0)+q;
     const msg=`${p.name} 買入《${a.name}》×${q}，成交 ${total.toLocaleString()} G，手續費 ${fee.toLocaleString()} G`;
     showOrderToast(`✓ ${msg}`,true);
-    W.log.unshift({time:timeTag,text:msg,type:'good'});
+    W.log.unshift({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good'});
 
   }else if(orderMode==='sell'){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法賣出`,false);return;}
     if(pos.qty<q){showOrderToast(`${p.name} 持貨不足！持有 ${pos.qty} 份`,false);return;}
+    if(!tryWatchTrade(a,'sell',p))return;
     const fee=Math.round(total*SELL_FEE_RATE);
     const proceeds=total-fee;
     const realized=proceeds-(pos.avgCost*q);
@@ -1990,23 +2319,24 @@ async function doMainAction(){
     const nq=pos.qty-q;
     if(nq<=0)delete p.portfolio[a.id];else p.portfolio[a.id]={qty:nq,avgCost:pos.avgCost};
     const d=ensureDayTrades(p);const offset=Math.min(d.buys[a.id]||0,q);
-    if(offset>0){d.buys[a.id]-=offset;d.offsets.unshift({assetId:a.id,qty:offset,price:a.price,time:timeTag});d.offsets=d.offsets.slice(0,40);}
+    if(offset>0){d.buys[a.id]-=offset;d.offsets.unshift({assetId:a.id,qty:offset,price:quotePrice(a),time:timeTag});d.offsets=d.offsets.slice(0,40);}
     const sign=realized>=0?'+':'';
     const pnlType=realized>=0?'good':'bad';
     const dayTradeText=offset>0?`，當日沖銷 ×${offset}`:'';
     const msg=`${p.name} 賣出《${a.name}》×${q}，成交 ${total.toLocaleString()} G，手續費 ${fee.toLocaleString()} G，損益 ${sign}${Math.round(realized).toLocaleString()} G${dayTradeText}`;
     showOrderToast(`✓ ${msg}`,realized>=0);
-    W.log.unshift({time:timeTag,text:msg,type:pnlType});
+    W.log.unshift({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnlType});
 
   }else if(orderMode==='short'){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法做空`,false);return;}
     if(p.cash<total){showOrderToast(`${p.name} 保證金不足！需 ${total.toLocaleString()} G`,false);return;}
+    if(!tryWatchTrade(a,'short',p))return;
     p.cash-=total;
     if(!p.shorts)p.shorts=[];
-    p.shorts.push({assetId:a.id,shortQty:q,entryPrice:a.price,principal:total,daysHeld:0});
+    p.shorts.push({assetId:a.id,shortQty:q,entryPrice:quotePrice(a),principal:total,daysHeld:0});
     const msg=`${p.name} 做空《${a.name}》×${q}，鎖定本金 ${total.toLocaleString()} G`;
     showOrderToast(`↓ ${msg}`,true);
-    W.log.unshift({time:timeTag,text:msg,type:'good'});
+    W.log.unshift({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good'});
     renderShortPositions();
   }
 
@@ -2018,7 +2348,12 @@ async function doMainAction(){
 // ── 持倉卡片 ──
 function renderPortGrid(){
   const grid=document.getElementById('portGrid');grid.innerHTML='';
-  W.players.forEach(p=>{
+  W.players.forEach((p,pidx)=>{
+    if(!isPlayerUnlocked(pidx)){
+      const card=document.createElement('div');card.className='player-card';
+      card.innerHTML=`<div class="pcard-head"><div class="pcard-name-row"><span class="pcard-name">${p.name}</span><span class="pcard-cash">\u5df2\u9396\u5b9a</span></div><div class="pcard-summary">\u8f38\u5165\u5bc6\u78bc\u5f8c\u624d\u80fd\u67e5\u770b\u6301\u5009\u8207\u4ea4\u6613</div></div>`;
+      grid.appendChild(card);return;
+    }
     const pv=pvOf(p);const cost=totalCost(p);const unr=pv-cost;const rlz=p.realizedPnL||0;
     const shorts=p.shorts||[];
     const shortPnLTotal=shorts.reduce((s,sh)=>s+shortPnL(sh),0);
@@ -2027,7 +2362,7 @@ function renderPortGrid(){
     if(!held.length&&!shorts.length){itemsHtml='<div class="empty-port">尚無持倉</div>';}
     held.forEach(id=>{
       const a=W.assets.find(x=>x.id===id);const pos=getPos(p,id);if(!a||!pos.qty)return;
-      const mv=a.price*pos.qty;const costVal=pos.avgCost*pos.qty;const pnl=mv-costVal;
+      const mv=quotePrice(a)*pos.qty;const costVal=pos.avgCost*pos.qty;const pnl=mv-costVal;
       const s=pnl>=0?'+':'';const cls=pnl>=0?'pnl-pos':'pnl-neg';
       const rate=costVal>0?((pnl/costVal)*100).toFixed(1):'—';
       const pidx_long=W.players.indexOf(p);
@@ -2088,9 +2423,22 @@ function isPlayerSafeMessage(e){
   return !blocked.some(k=>t.includes(k));
 }
 
+function privateTradeText(name){return `${name} \u9032\u884c\u4e86\u4e00\u7b46\u4ea4\u6613`;}
+function publicLogText(e){
+  if(!e)return '';
+  if(e.privateTrade&&e.actor)return privateTradeText(e.actor);
+  const t=String(e.text||'');
+  const actor=(W?.players||[]).find(p=>p?.name&&t.includes(p.name));
+  const detailMarks=[
+    '\u300a','\u00d7','\u8cb7\u5165','\u8ce3\u51fa','\u505a\u7a7a','\u5e73\u5009',
+    '\u7a7a\u55ae','\u6210\u4ea4','\u624b\u7e8c\u8cbb','\u9396\u5b9a\u672c\u91d1','\u640d\u76ca'
+  ];
+  if(actor&&detailMarks.some(k=>t.includes(k)))return privateTradeText(actor.name);
+  return t;
+}
 function renderLog(){
   const b=document.getElementById('logBox');b.innerHTML='';
-  (W.log||[]).filter(isPlayerSafeMessage).forEach(e=>{const d=document.createElement('div');d.className=`log-e ${e.type}`;d.innerHTML=`<span class="lt">[${e.time}]</span>${e.text}`;b.appendChild(d);});
+  (W.log||[]).filter(isPlayerSafeMessage).forEach(e=>{const d=document.createElement('div');d.className=`log-e ${e.type}`;d.innerHTML=`<span class="lt">[${e.time}]</span>${publicLogText(e)}`;b.appendChild(d);});
 }
 
 // ── 財富排行榜 ──
