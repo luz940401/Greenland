@@ -124,7 +124,7 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 /* 底部滑出面板 */
 .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;opacity:0;pointer-events:none;transition:opacity .25s;}
 .sheet-overlay.open{opacity:1;pointer-events:auto;}
-.bottom-sheet{position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--parch);border:2px solid var(--gold);border-bottom:none;box-shadow:0 -6px 30px rgba(0,0,0,0.5);border-radius:12px 12px 0 0;max-height:90vh;overflow-y:auto;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.bottom-sheet{position:fixed;bottom:0;left:0;right:0;z-index:501;background:var(--parch);border:2px solid var(--gold);border-bottom:none;box-shadow:0 -6px 30px rgba(0,0,0,0.5);border-radius:12px 12px 0 0;max-height:90vh;overflow-y:auto;overflow-x:hidden;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);touch-action:pan-y;}
 .bottom-sheet.open{transform:translateY(0);}
 .sheet-handle{width:40px;height:4px;background:var(--parch3);border-radius:2px;margin:10px auto 0;}
 .sheet-head{background:var(--parch2);border-bottom:2px solid var(--gold);padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
@@ -380,7 +380,7 @@ canvas{display:block;}
   <div class="welcome-org" id="welcomeOrg">深水城－神之領域騎士團</div>
   <div class="welcome-divider" id="welcomeDivider"></div>
   <div class="welcome-name" id="welcomeName"></div>
-  <div class="welcome-sub">身份驗證完成</div>
+  <div class="welcome-sub" id="welcomeSub">身份驗證完成</div>
   <div class="welcome-badge" id="welcomeBadge">✦ 已進入交易所 ✦</div>
 </div>
 
@@ -461,7 +461,7 @@ canvas{display:block;}
       <label class="ma-chip" id="maChip180" style="--ma-color:#e05050;--ma-rgb:224,80,80" onclick="toggleMA(180)"><span class="ma-dot"></span>MA180</label>
     </div>
   </div>
-  <div class="sheet-chart-wrap" style="position:relative">
+  <div class="sheet-chart-wrap" style="position:relative;overflow:hidden;touch-action:pan-y">
     <canvas id="sheetIntradayChart" height="360" style="width:100%;cursor:crosshair"></canvas>
     <canvas id="sheetChart" height="360" style="width:100%;cursor:crosshair;display:none"></canvas>
     <div id="chartTooltip" style="display:none;position:absolute;background:rgba(20,12,4,0.92);border:1px solid var(--gold);padding:7px 11px;font-size:11px;color:#f5e9ce;pointer-events:none;z-index:10;line-height:1.8;white-space:nowrap;"></div>
@@ -881,14 +881,16 @@ const PLAYER_TITLES = {
 function showWelcome(playerName){
   const ov=document.getElementById('welcomeOverlay');
   const nameEl=document.getElementById('welcomeName');
+  const subEl=document.getElementById('welcomeSub');
   nameEl.textContent=PLAYER_TITLES[playerName]||playerName;
+  if(subEl)subEl.textContent='歡迎回來，'+(playerName||'冒險者');
   ov.classList.remove('fade-out');
   ov.classList.add('open');
-  // 2.2 秒後淡出
+  // 3 秒後淡出
   setTimeout(()=>{
     ov.classList.add('fade-out');
-    setTimeout(()=>{ov.classList.remove('open','fade-out');},650);
-  },2200);
+    setTimeout(()=>{ov.classList.remove('open','fade-out');},700);
+  },3000);
 }
 // 用 Promise 控制 modal 的「顯示 → 等待輸入 → 顯示錯誤 → 再等待」循環
 // _showLoginModal 顯示 modal 並回傳 Promise
@@ -915,6 +917,7 @@ async function registerPlayerLogin(p,i){
     if(isAccountTaken(res.account,i)){_loginSetError('這個帳號已被使用，請換一個');continue;}
     if(!res.pass){_loginSetError('密碼不能空白');continue;}
     if(res.pass!==res.pass2){_loginSetError('兩次密碼不一致，請重新輸入');continue;}
+    // ✅ 立即關閉 modal，背景再做 hash（玩家馬上看到反應）
     _closeLoginModal();
     p.accountPlain=res.account;
     p.passPlain=res.pass;
@@ -943,13 +946,20 @@ async function unlockPlayer(i){
     while(true){
       const res=await new Promise(r=>{_loginResolve=r;});
       if(!res){_closeLoginModal();return false;}
-      const h=await hashPlayerPassword(res.pass);
-      if(h!==p.passHash){_loginSetError('密碼錯誤');continue;}
+      // ✅ 先做基本帳號欄位檢查（不等 hash）
       if(!res.account){_loginSetError('帳號不能空白');continue;}
       if(isAccountTaken(res.account,i)){_loginSetError('這個帳號已被使用');continue;}
+      // ✅ 立即關閉 modal，顯示載入提示，背景驗證
       _closeLoginModal();
+      const h=await hashPlayerPassword(res.pass);
+      if(h!==p.passHash){
+        // 密碼錯誤：重新打開 modal 顯示錯誤
+        _showLoginModal({icon:p.icon||'👤',name:p.name,mode:'請輸入密碼，並設定帳號',showAccount:true,showPass:true,showPass2:false});
+        _loginSetError('密碼錯誤');
+        continue;
+      }
       p.accountPlain=res.account.trim();
-      p.passPlain=res.pass;  // 補存明文，讓 GM 看得到
+      p.passPlain=res.pass;
       PLAYER_UNLOCKS.add(String(i));activePidx=i;await pushW();return true;
     }
   }
@@ -962,13 +972,20 @@ async function unlockPlayer(i){
   while(true){
     const res=await new Promise(r=>{_loginResolve=r;});
     if(!res){_closeLoginModal();return false;}
+    // ✅ 帳號先做字串比對（不等 hash，立即反應）
     if(accountKey(res.account)!==accountKey(p.accountPlain)){_loginSetError('帳號錯誤');continue;}
-    const h=await hashPlayerPassword(res.pass);
-    if(h!==p.passHash){_loginSetError('密碼錯誤');continue;}
+    // ✅ 立即關閉 modal，背景計算 hash
     _closeLoginModal();
+    const h=await hashPlayerPassword(res.pass);
+    if(h!==p.passHash){
+      // 密碼錯誤：重新打開 modal 顯示錯誤
+      _showLoginModal({icon:p.icon||'👤',name:p.name,mode:'請輸入帳號與密碼',showAccount:true,showPass:true,showPass2:false});
+      _loginSetError('密碼錯誤，請重試');
+      continue;
+    }
     if(!p.passPlain){
-      p.passPlain=res.pass;  // 補存明文，讓 GM 看得到
-      await pushW();         // 立即存回雲端
+      p.passPlain=res.pass;
+      await pushW();
     }
     PLAYER_UNLOCKS.add(String(i));activePidx=i;return true;
   }
@@ -1257,8 +1274,12 @@ function drawIntradayChart(a){
   const c=document.getElementById('sheetIntradayChart');if(!c)return;
   const ctx=c.getContext('2d'), P=intradayPlan(a), pts=P?.points||[];
   const wrap=c.parentElement;
-  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||c.width||320)-2)), Hd=c.height||360;
-  c.width=Wd;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2)), Hd=360;
+  // 高解析度：canvas 實際像素放大，CSS 尺寸維持不變
+  c.width=Wd*dpr; c.height=Hd*dpr;
+  c.style.width=Wd+'px'; c.style.height=Hd+'px';
+  ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,Wd,Hd);
   ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
   ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
@@ -1319,20 +1340,20 @@ function bindIntradayChartEvents(c,a,P,layout){
   c.onmousemove=e=>showIntradayTooltip(e,c,a,P,layout);
   c.onclick=e=>showIntradayTooltip(e,c,a,P,layout);
   c.onmouseleave=()=>{document.getElementById('chartTooltip').style.display='none';if(_chartAsset)drawIntradayChart(_chartAsset);};
-  c.ontouchstart=e=>{
+  c.addEventListener('touchstart',e=>{
     if(!e.touches.length)return;
     e.preventDefault();
     const t=e.touches[0];
     showIntradayTooltip({clientX:t.clientX,clientY:t.clientY},c,a,P,layout);
-  };
+  },{passive:false});
 }
 
 function nearestIntradayPoint(e,c,P){
   const rect=c.getBoundingClientRect();
-  const mx=(e.clientX-rect.left)*(c.width/rect.width);
+  const mx=e.clientX-rect.left;  // CSS 座標，不需要乘以 dpr
   const major=(P.points||[]).filter(p=>p.major);
   if(!major.length)return null;
-  const slotPos=(mx-58)/(Math.max(1,c.width-58-16))*(INTRADAY_SLOTS.length-1);
+  const slotPos=(mx-58)/(Math.max(1,rect.width-58-16))*(INTRADAY_SLOTS.length-1);
   return major.reduce((best,p)=>Math.abs(p.slot-slotPos)<Math.abs(best.slot-slotPos)?p:best,major[0]);
 }
 
@@ -1782,10 +1803,13 @@ function drawMA(ctx,maData,visible,offset,px,py,cfg){
 function drawSheetChart(a){
   const c=document.getElementById('sheetChart');
   const wrap=c.parentElement;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
   const w=Math.max(280,(wrap?.clientWidth||c.clientWidth||320)-2);
   const H=360;
-  c.width=w; c.height=H;
+  c.width=w*dpr; c.height=H*dpr;
+  c.style.width=w+'px'; c.style.height=H+'px';
   const ctx=c.getContext('2d');
+  ctx.scale(dpr,dpr);
   const d=a.history;
   if(d.length<2){ctx.clearRect(0,0,w,H);return;}
 
@@ -2069,7 +2093,7 @@ function bindChartEvents(c){
 
 function getHoveredCandle(e,c){
   const rect=c.getBoundingClientRect();
-  const mx=(e.clientX-rect.left)*(c.width/rect.width);
+  const mx=e.clientX-rect.left;  // CSS 座標
   const {pl,gap,SHOW,visible}=_chartLayout;
   const idx=Math.round((mx-pl)/gap-0.5);
   if(idx<0||idx>=SHOW)return null;
@@ -2110,9 +2134,9 @@ function showCandleTooltip(e,c,cd,idx){
     `<span style="color:${col}">${sign} ${Math.abs(chgPct)}%</span>`+
     (maHtml?`<hr style="border-color:rgba(255,255,255,0.15);margin:4px 0">${maHtml}`:'');
   const rect=c.getBoundingClientRect();
-  const rx=(e.clientX-rect.left)*(c.width/rect.width);
-  const tipLeft=rx>c.width*0.6?'auto':'calc('+Math.round(rx/c.width*100)+'% + 8px)';
-  const tipRight=rx>c.width*0.6?(c.width-rx)/c.width*100+'%':'auto';
+  const rx=e.clientX-rect.left;  // CSS 座標
+  const tipLeft=rx>rect.width*0.6?'auto':'calc('+Math.round(rx/rect.width*100)+'% + 8px)';
+  const tipRight=rx>rect.width*0.6?(rect.width-rx)/rect.width*100+'%':'auto';
   tip.style.left=tipLeft; tip.style.right=tipRight; tip.style.top='10px';
   tip.style.display='block';
 }
