@@ -1482,7 +1482,7 @@ function drawSheetChart(a){
   const candles=buildCandles(d,a.id);
   _chartAsset=a; _chartCandles=candles;
 
-  const pl=52,pr=10,pt=14,pb=22;
+  const pl=52,pr=10,pt=26,pb=34;
   const cw=w-pl-pr, ch=H-pt-pb;
   const zoomBars=Number.isFinite(_chartZoom)?Math.floor(_chartZoom):candles.length;
   const SHOW=Math.min(candles.length,Math.max(5,zoomBars));
@@ -1504,10 +1504,12 @@ function drawSheetChart(a){
     const arr=maArrays[p];
     visible.forEach((_,i)=>{const v=arr[offset+i];if(v!=null)allVals.push(v);});
   });
-  const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1;
-
-  const barW=Math.max(3,Math.floor(cw/SHOW*0.7));
   const gap=cw/SHOW;
+  const rawMn=Math.min(...allVals), rawMx=Math.max(...allVals);
+  const padRange=Math.max((rawMx-rawMn)*0.14, rawMx*0.012, 1);
+  const mn=rawMn-padRange, mx=rawMx+padRange, rng=mx-mn||1;
+
+  const barW=Math.max(2,Math.min(14,Math.floor(gap*0.52)));
   const px=i=>pl+i*gap+gap/2;
   const py=v=>pt+(1-(v-mn)/rng)*ch;
 
@@ -1584,10 +1586,11 @@ function drawSheetChart(a){
       if(isLimitUp||isLimitDn){
         // 一字漲跌停：畫一條水平粗線，不加箭頭
         const lineY=py(cd.close);
+        const limitW=Math.max(5,Math.min(barW*0.65,gap*0.34));
         ctx.shadowColor=isLimitUp?'rgba(255,50,50,0.6)':'rgba(0,200,100,0.6)';
         ctx.shadowBlur=6;
         ctx.fillStyle=fillCol;
-        ctx.fillRect(x-barW/2,lineY-2,barW,4);
+        ctx.fillRect(x-limitW/2,lineY-1.5,limitW,3);
         ctx.shadowBlur=0;
       }else{
         ctx.strokeStyle=strokeCol;ctx.lineWidth=1;
@@ -1860,7 +1863,8 @@ function drawSheetChartHighlight(hIdx){
   ctx.fillText(dayLabel,dlblX+dlblW/2,H-dlblH+13);
 
   // ── 高亮K棒外框 ──
-  const barW=Math.max(3,Math.floor(cw/_chartLayout.SHOW*0.7));
+  const gap=cw/_chartLayout.SHOW;
+  const barW=Math.max(2,Math.min(14,Math.floor(gap*0.52)));
   ctx.strokeStyle='#ffffff';
   ctx.lineWidth=2;
   ctx.setLineDash([]);
@@ -2074,9 +2078,19 @@ function renderPortGrid(){
 }
 
 // ── Log ──
+function isPlayerSafeMessage(e){
+  if(!e||e.gmOnly)return false;
+  const t=String(e.text||'');
+  const blocked=[
+    '今日市場日型','市場日型','日內目標','事件干涉','GM','族群指令',
+    '批次事件目標','全市場日內目標','目標收盤','波動程度'
+  ];
+  return !blocked.some(k=>t.includes(k));
+}
+
 function renderLog(){
   const b=document.getElementById('logBox');b.innerHTML='';
-  (W.log||[]).filter(e=>!e.gmOnly).forEach(e=>{const d=document.createElement('div');d.className=`log-e ${e.type}`;d.innerHTML=`<span class="lt">[${e.time}]</span>${e.text}`;b.appendChild(d);});
+  (W.log||[]).filter(isPlayerSafeMessage).forEach(e=>{const d=document.createElement('div');d.className=`log-e ${e.type}`;d.innerHTML=`<span class="lt">[${e.time}]</span>${e.text}`;b.appendChild(d);});
 }
 
 // ── 財富排行榜 ──
@@ -2138,6 +2152,7 @@ function renderEvRecord(){
   const keyword=(document.getElementById('evSearchInput')?.value||'').trim().toLowerCase();
   const source=(W.eventLog&&W.eventLog.length)?W.eventLog:[];
   const entries=source.filter(e=>{
+    if(!isPlayerSafeMessage(e))return false;
     if(keyword&&!e.text.toLowerCase().includes(keyword))return false;
     return true;
   });
