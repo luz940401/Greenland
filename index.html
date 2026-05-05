@@ -1026,6 +1026,17 @@ async function pull(){
   try{const r=await fetch(SURL+'?t='+Date.now());const j=await r.json();if(j.ok){setSS('ok','已同步');return j.data;}setSS('err','讀取失敗');return null;}
   catch(e){setSS('err','無法連線');return null;}
 }
+function logGameOrder(e){
+  const m=String(e?.time||'').match(/(\d+)年第(\d+)日/);
+  return m?Number(m[1])*1000+Number(m[2]):0;
+}
+function logRealOrder(e){
+  if(Number.isFinite(e?.createdAt))return e.createdAt;
+  const uid=String(e?.uid||'');
+  const guess=uid.slice(0,8);
+  const n=parseInt(guess,36);
+  return Number.isFinite(n)?n:0;
+}
 function mergeLogs(cloudLog=[],localLog=[]){
   const merged=[],seen=new Set();
   [...localLog,...cloudLog].forEach(e=>{
@@ -1035,6 +1046,7 @@ function mergeLogs(cloudLog=[],localLog=[]){
     if(seen.has(key))return;
     seen.add(key);merged.push(e);
   });
+  merged.sort((a,b)=>(logGameOrder(b)-logGameOrder(a))||(logRealOrder(b)-logRealOrder(a)));
   return merged.slice(0,200);
 }
 function pendingTradeLogs(){
@@ -1052,6 +1064,7 @@ function tradeGuardActive(){
 }
 function addTradeLog(entry){
   if(!W.log)W.log=[];
+  if(!entry.createdAt)entry.createdAt=Date.now();
   W.log.unshift(entry);
   rememberPendingTradeLog(entry);
 }
