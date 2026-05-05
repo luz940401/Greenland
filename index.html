@@ -1247,9 +1247,14 @@ function drawMiniCandle(a,cid){
 function drawSpk(a,cid){
   const c=document.getElementById(cid||('spk_'+a.id));if(!c)return;
   const ctx=c.getContext('2d');
+  const dpr=Math.min(window.devicePixelRatio||1,3);
   const P=intradayPlan(a);
-  const CW=Math.max(96,Math.round(c.clientWidth||c.width||360)), CH=Math.max(44,Math.round(c.clientHeight||c.height||76));
-  if(c.width!==CW)c.width=CW;if(c.height!==CH)c.height=CH;
+  const CW=Math.max(96,Math.round(c.clientWidth||c.width||360));
+  const CH=Math.max(44,Math.round(c.clientHeight||c.height||76));
+  // 高解析度：canvas 實際像素放大，CSS 尺寸維持不變
+  if(c.width!==CW*dpr){c.width=CW*dpr;c.style.width=CW+'px';}
+  if(c.height!==CH*dpr){c.height=CH*dpr;c.style.height=CH+'px';}
+  ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,CW,CH);
   if(P&&P.points&&P.points.length){
     const pts=P.points;
@@ -1258,28 +1263,28 @@ function drawSpk(a,cid){
     ctx.fillRect(0,0,CW,CH);
     const baseY=(CH-5)-((P.prevClose-mn)/rng)*(CH-10);
     const redGrad=ctx.createLinearGradient(0,0,0,baseY);
-    redGrad.addColorStop(0,'rgba(192,57,43,.28)');
-    redGrad.addColorStop(1,'rgba(192,57,43,0)');
+    redGrad.addColorStop(0,'rgba(220,48,32,.35)');
+    redGrad.addColorStop(1,'rgba(220,48,32,0)');
     const greenGrad=ctx.createLinearGradient(0,baseY,0,CH);
-    greenGrad.addColorStop(0,'rgba(39,174,96,0)');
-    greenGrad.addColorStop(1,'rgba(39,174,96,.26)');
+    greenGrad.addColorStop(0,'rgba(24,160,80,0)');
+    greenGrad.addColorStop(1,'rgba(24,160,80,.30)');
     fillMiniArea(ctx,pts,P,true,CW,CH,redGrad);
     fillMiniArea(ctx,pts,P,false,CW,CH,greenGrad);
-    ctx.strokeStyle='rgba(106,72,32,0.34)';
-    ctx.lineWidth=1;
+    ctx.strokeStyle='rgba(106,72,32,0.28)';
+    ctx.lineWidth=0.5;
     ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(CW,baseY);ctx.stroke();ctx.setLineDash([]);
     drawMiniLineSegments(ctx,pts,P,CW,CH);
     const lp=pts[pts.length-1];
     const lx=(lp.slot/(INTRADAY_SLOTS.length-1))*CW, ly=(CH-5)-((lp.price-mn)/rng)*(CH-10);
-    ctx.fillStyle=lp.price>=P.prevClose?'#c0392b':'#27ae60';
-    ctx.beginPath();ctx.arc(lx,ly,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=lp.price>=P.prevClose?'#e03020':'#18a050';
+    ctx.beginPath();ctx.arc(lx,ly,2,0,Math.PI*2);ctx.fill();
     return;
   }
   const raw=a.history.slice(-20);
   const cur=quotePrice(a);
   const d=(cur!==raw[raw.length-1])?[...raw,cur]:raw;
   const mn=Math.min(...d),mx=Math.max(...d),rng=mx-mn||1;
-  ctx.strokeStyle=chCol(gc(a));ctx.lineWidth=1.5;ctx.beginPath();
+  ctx.strokeStyle=chCol(gc(a));ctx.lineWidth=0.8;ctx.beginPath();
   d.forEach((v,i)=>{const x=(i/(d.length-1))*CW,y=(CH-4)-((v-mn)/rng)*(CH-8);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
 }
 function miniXY(pt,P,CW,CH){
@@ -1303,7 +1308,7 @@ function fillMiniArea(ctx,pts,P,isUp,CW,CH,fillStyle){
   ctx.fill();
 }
 function drawMiniLineSegments(ctx,pts,P,CW,CH){
-  drawSegmentedByZero(ctx,pts,P,pt=>miniXY(pt,P,CW,CH),1.15);
+  drawSegmentedByZero(ctx,pts,P,pt=>miniXY(pt,P,CW,CH),0.75);
 }
 function drawSegmentedByZero(ctx,pts,P,toXY,lineWidth){
   for(let i=1;i<pts.length;i++){
@@ -1311,15 +1316,15 @@ function drawSegmentedByZero(ctx,pts,P,toXY,lineWidth){
     const aUp=a.price>=P.prevClose,bUp=b.price>=P.prevClose;
     ctx.lineWidth=lineWidth;ctx.lineCap='round';ctx.lineJoin='round';
     if(aUp===bUp){
-      ctx.strokeStyle=bUp?'#c0392b':'#27ae60';
+      ctx.strokeStyle=bUp?'#e03020':'#18a050';
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
     }else{
       const ratio=(P.prevClose-a.price)/(b.price-a.price);
       const mid={slot:a.slot+(b.slot-a.slot)*ratio,price:P.prevClose};
       const pm=toXY(mid);
-      ctx.strokeStyle=aUp?'#c0392b':'#27ae60';
+      ctx.strokeStyle=aUp?'#e03020':'#18a050';
       ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pm.x,pm.y);ctx.stroke();
-      ctx.strokeStyle=bUp?'#c0392b':'#27ae60';
+      ctx.strokeStyle=bUp?'#e03020':'#18a050';
       ctx.beginPath();ctx.moveTo(pm.x,pm.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
     }
   }
