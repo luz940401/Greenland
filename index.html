@@ -1065,6 +1065,7 @@ function tradeGuardActive(){
 function addTradeLog(entry){
   if(!W.log)W.log=[];
   if(!entry.createdAt)entry.createdAt=Date.now();
+  if(!entry.ts)entry.ts=entry.createdAt; // ★ GAS 排序用
   W.log.unshift(entry);
   rememberPendingTradeLog(entry);
 }
@@ -2627,7 +2628,7 @@ function checkForceCloseShorts(){
       p.shorts.splice(idx,1);
       if(!W.log)W.log=[];
       const aName=a?a.name:s.assetId;
-      W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`⚠ ${p.name} 《${aName}》空單虧損達50%，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G，手續費 ${forcedFee.toLocaleString()} G`,type:'bad',uid:logUid()});
+      W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`⚠ ${p.name} 《${aName}》空單虧損達50%，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G，手續費 ${forcedFee.toLocaleString()} G`,type:'bad',uid:logUid(),ts:Date.now()});
       anyForced=true;
     });
   });
