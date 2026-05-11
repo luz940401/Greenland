@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -13,20 +13,31 @@
   --up:#c0392b;--dn:#27ae60;
   --shadow:rgba(20,10,0,0.35);
   --limit-up:#cc0000;--limit-dn:#007a3d;
+  --panel:#fff7df;--panel-soft:rgba(255,255,255,0.92);
+  --glass:#ffffffcc;--glass-strong:rgba(255,255,255,0.72);
+  --stroke:rgba(255,255,255,0.45);
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellipse at 50% 0%,#2e1a08,#140c04 65%);font-family:'Noto Sans TC',sans-serif;font-size:15px;color:var(--ink);padding:12px 12px 140px;}
-.panel{background:rgba(245,233,206,0.95);border:2px solid var(--gold);box-shadow:0 3px 16px var(--shadow);margin-bottom:14px;}
-.ph{background:var(--parch2);border-bottom:2px solid var(--gold);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+body{min-height:100vh;background:#140c04;background-image:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,0.08), transparent 8%),
+    radial-gradient(circle at 85% 10%, rgba(255,255,255,0.05), transparent 12%),
+    radial-gradient(circle at 50% 20%, rgba(237,224,181,0.18), transparent 22%),
+    radial-gradient(circle at 50% 100%, rgba(255,255,255,0.06), transparent 24%),
+    linear-gradient(180deg, #251308 0%, #140c04 38%, #120901 100%);
+  font-family:'Noto Sans TC',sans-serif;font-size:15px;color:var(--ink);padding:18px 18px 160px;position:relative;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background:linear-gradient(180deg, rgba(255,255,255,0.05), transparent 28%), radial-gradient(circle at 50% 0%, rgba(255,255,255,0.06), transparent 18%);mix-blend-mode:screen;}
+.panel{background:linear-gradient(180deg, rgba(255,250,238,0.96), rgba(255,247,223,0.92));border:1px solid rgba(184,134,11,0.28);box-shadow:0 14px 40px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(255,255,255,0.55);border-radius:18px;margin-bottom:18px;overflow:hidden;}
+.ph{background:var(--parch2);border-bottom:2px solid var(--gold);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-radius:17px 17px 0 0;}
 .ph-title{font-size:13px;font-weight:700;color:var(--ink2);letter-spacing:1px;}
 .pb{padding:16px;}
-.site-header{background:rgba(245,233,206,0.97);border:2px solid var(--gold);border-bottom:4px solid var(--gold);box-shadow:0 3px 16px var(--shadow);padding:14px 16px;margin-bottom:14px;text-align:center;}
-.site-header h1{font-size:clamp(18px,5vw,26px);font-weight:900;color:var(--ink);letter-spacing:2px;}
+.site-header{background:linear-gradient(180deg, rgba(255,250,238,0.98), rgba(245,233,206,0.9));border:1px solid rgba(184,134,11,0.28);border-bottom:4px solid rgba(184,134,11,0.95);box-shadow:0 18px 38px rgba(0,0,0,0.22);padding:18px 22px;margin-bottom:20px;text-align:center;position:relative;}
+.site-header::after{content:'';position:absolute;left:50%;bottom:-14px;transform:translateX(-50%);width:calc(100% - 48px);height:20px;background:rgba(255,255,255,0.35);filter:blur(15px);pointer-events:none;}
+.site-header h1{font-size:clamp(20px,6vw,32px);font-weight:900;color:var(--ink);letter-spacing:3px;text-shadow:0 1px 0 rgba(255,255,255,0.55);}
 .site-header .sub{font-size:12px;color:var(--ink3);margin-top:3px;}
-.nav-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
-.nav-link{font-size:12px;font-weight:500;color:var(--gold);text-decoration:none;border:1px solid var(--gold);padding:5px 14px;}
-.sync-bar{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink3);padding:4px 12px;border:1px solid var(--parch3);background:rgba(255,255,255,0.2);}
-.sdot{width:8px;height:8px;border-radius:50%;background:var(--parch3);flex-shrink:0;}
+.nav-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;}
+.nav-link{font-size:12px;font-weight:700;color:var(--gold);text-decoration:none;border:1px solid rgba(184,134,11,0.34);padding:7px 16px;border-radius:999px;background:rgba(255,255,255,0.7);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.35);}
+.sync-bar{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);padding:6px 14px;border:1px solid rgba(222,206,150,0.55);background:rgba(255,255,255,0.68);border-radius:999px;}
+.sdot{width:10px;height:10px;border-radius:50%;background:var(--parch3);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.4);}
 .sdot.ok{background:var(--dn);}.sdot.err{background:var(--up);}
 .sdot.spin{background:var(--gold);animation:sp .8s infinite;}
 @keyframes sp{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -42,24 +53,24 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .pchip.active{border-color:var(--gold);background:rgba(184,134,11,0.12);color:var(--ink);font-weight:700;}
 .pchip-cash{font-size:10px;display:block;margin-top:2px;color:var(--dn);}
 /* 市場表格 */
-.mkt-table{width:100%;border-collapse:collapse;}
-.mkt-table th{font-size:11px;font-weight:700;color:var(--ink3);padding:8px 8px;border-bottom:2px solid var(--parch3);text-align:left;letter-spacing:1px;white-space:nowrap;}
-.mkt-table td{padding:9px 8px;border-bottom:1px solid rgba(222,206,150,0.5);vertical-align:middle;}
-.mkt-table tr.asset-row{cursor:pointer;transition:background .15s;}
-.mkt-table tr.asset-row:hover{background:rgba(192,57,43,0.04);}
-.mkt-table th.candle-col,.mkt-table td.candle-col{width:34px;text-align:center;padding-left:10px;padding-right:4px;}
+.mkt-table{width:100%;border-collapse:separate;border-spacing:0 5px;}
+.mkt-table th{font-size:11px;font-weight:700;color:var(--ink2);padding:8px 10px;border-bottom:2px solid rgba(222,206,150,0.45);text-align:left;letter-spacing:1px;white-space:nowrap;background:linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,233,206,0.95));}
+.mkt-table td{padding:8px 10px;border:none;vertical-align:middle;}
+.mkt-table tr.asset-row{cursor:pointer;transition:transform .2s,box-shadow .2s,background .2s;box-shadow:0 0 0 rgba(0,0,0,0);background:rgba(255,240,205,0.52);backdrop-filter:blur(6px);border:1px solid rgba(200,172,110,0.32);border-radius:10px;}
+.mkt-table tr.asset-row:hover{transform:translateY(-1px);box-shadow:0 12px 25px rgba(0,0,0,0.12);background:rgba(255,246,220,0.88);}
+.mkt-table th.candle-col,.mkt-table td.candle-col{width:36px;text-align:center;padding-left:8px;padding-right:4px;}
 .mkt-table th.chart-col,.mkt-table td.chart-col{width:42%;min-width:230px;}
-.mkt-spk{width:100%;height:70px;display:block;background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(237,224,181,0.18));border:1px solid rgba(222,206,150,0.65);}
-.mkt-candle{width:24px;height:58px;display:block;margin:auto;}
+.mkt-spk{width:100%;height:80px;display:block;background:linear-gradient(180deg, rgba(250,236,196,0.60), rgba(235,215,165,0.18));border-radius:10px;border:1px solid rgba(200,172,110,0.40);box-shadow:inset 0 1px 0 rgba(255,248,220,0.55);}
+.mkt-candle{width:22px;height:52px;display:block;margin:auto;border-radius:10px;background:rgba(255,255,255,0.28);box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);}
 .mkt-main-cell{min-width:170px;}
 .mkt-name-main{font-size:14px;font-weight:900;color:var(--ink);line-height:1.2;}
 .mkt-region,.mkt-facility{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mkt-facility{margin-top:2px;}
-.mkt-name-sub{font-size:10px;color:var(--ink3);margin-top:3px;line-height:1.3;}
+.mkt-name-sub{font-size:10px;color:var(--ink3);margin-top:2px;line-height:1.3;}
 .mkt-price-cell{min-width:82px;text-align:right;}
-.mkt-price-main{font-size:16px;font-weight:900;}
+.mkt-price-main{font-size:19px;font-weight:900;}
 .mkt-chg-cell{min-width:78px;text-align:right;}
-.mkt-chg-main{font-size:12px;font-weight:900;line-height:1.35;}
+.mkt-chg-main{font-size:15px;font-weight:900;line-height:1.35;}
 .mkt-name-mobile{display:none;}
 .mkt-name-desktop{display:inline;}
 .daytrade-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid var(--gold);background:rgba(184,134,11,0.08);color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:1px;}
@@ -186,14 +197,14 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 /* 做空說明 */
 .short-info{background:rgba(184,134,11,0.07);border:1px solid rgba(184,134,11,0.3);padding:9px 12px;margin-bottom:10px;font-size:12px;color:var(--ink3);line-height:1.7;}
 .short-info strong{color:var(--up);}
-.action-btn{width:100%;padding:15px;border:2px solid;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;transition:all .2s;}
-.action-btn:disabled{opacity:0.35;cursor:not-allowed;}
-.btn-buy{border-color:var(--up);color:var(--up);background:rgba(192,57,43,0.07);}
-.btn-buy:not(:disabled):hover{background:rgba(192,57,43,0.16);}
-.btn-sell{border-color:var(--dn);color:var(--dn);background:rgba(39,174,96,0.07);}
-.btn-sell:not(:disabled):hover{background:rgba(39,174,96,0.16);}
-.btn-short{border-color:var(--gold);color:var(--gold2);background:rgba(184,134,11,0.07);}
-.btn-short:not(:disabled):hover{background:rgba(184,134,11,0.18);}
+.action-btn{width:100%;padding:16px 18px;border:2px solid;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:15px;font-weight:900;letter-spacing:1px;text-transform:uppercase;transition:all .25s;box-shadow:0 10px 20px rgba(0,0,0,0.08);border-radius:12px;}
+.action-btn:disabled{opacity:0.4;cursor:not-allowed;box-shadow:none;}
+.btn-buy{border-color:var(--up);color:#fff;background:linear-gradient(180deg,rgba(192,57,43,0.96),rgba(192,57,43,0.85));}
+.btn-buy:not(:disabled):hover{background:linear-gradient(180deg,rgba(192,57,43,1),rgba(255,91,88,0.95));}
+.btn-sell{border-color:var(--dn);color:#fff;background:linear-gradient(180deg,rgba(39,174,96,0.96),rgba(39,174,96,0.85));}
+.btn-sell:not(:disabled):hover{background:linear-gradient(180deg,rgba(39,174,96,1),rgba(60,205,122,0.95));}
+.btn-short{border-color:var(--gold);color:#fff;background:linear-gradient(180deg,rgba(184,134,11,0.96),rgba(184,134,11,0.85));}
+.btn-short:not(:disabled):hover{background:linear-gradient(180deg,rgba(184,134,11,1),rgba(245,199,59,0.95));}
 /* 做空持倉 */
 .short-positions{margin-top:10px;}
 .short-item{padding:8px 12px;border:1px solid rgba(184,134,11,0.3);margin-bottom:6px;background:rgba(184,134,11,0.04);}
@@ -208,35 +219,35 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 @media(max-width:500px){.port-grid{grid-template-columns:1fr;}}
 @media(min-width:900px){
   .mkt-table th.chart-col,.mkt-table td.chart-col{width:50%;min-width:330px;}
-  .mkt-spk{height:82px;}
+  .mkt-spk{height:88px;}
 }
 @media(max-width:620px){
   .mkt-table thead{display:none;}
   .mkt-table,.mkt-table tbody{display:block;width:100%;}
-  .mkt-table tr.asset-row{display:grid;grid-template-columns:24px minmax(0,1fr) 58px 64px 118px;gap:6px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--parch3);min-height:104px;}
+  .mkt-table tr.asset-row{display:grid;grid-template-columns:22px minmax(0,1fr) 62px 70px 118px;gap:5px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--parch3);min-height:92px;}
   .mkt-table td{display:block;border-bottom:none;padding:0;min-width:0;}
   .mkt-table td.candle-col{width:auto;padding:0;}
   .mkt-table td.chart-col{min-width:0;width:100%;padding:0;}
-  .mkt-spk{height:70px;}
-  .mkt-candle{width:20px;height:58px;}
+  .mkt-spk{height:76px;}
+  .mkt-candle{width:18px;height:52px;}
   .mkt-main-cell{min-width:0;}
   .mkt-name-main{font-size:13px;line-height:1.18;word-break:normal;}
   .mkt-name-desktop{display:none;}
   .mkt-name-mobile{display:inline;}
-  .mkt-region{font-size:12px;color:var(--ink3);font-weight:700;}
-  .mkt-facility{font-size:13px;color:var(--ink);font-weight:900;}
-  .mkt-name-sub{font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mkt-region{font-size:12px;color:var(--ink3);font-weight:700;white-space:normal;overflow:visible;text-overflow:clip;}
+  .mkt-facility{font-size:13px;color:var(--ink);font-weight:900;white-space:normal;overflow:visible;text-overflow:clip;}
+  .mkt-name-sub{font-size:10px;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip;}
   .mkt-price-cell,.mkt-chg-cell{text-align:right;min-width:0;}
-  .mkt-price-main{font-size:15px;line-height:1.2;}
-  .mkt-chg-main{font-size:11px;line-height:1.3;}
+  .mkt-price-main{font-size:17px;line-height:1.2;}
+  .mkt-chg-main{font-size:13px;line-height:1.3;}
   .tag{display:none;}
 }
 @media(max-width:430px){
   body{padding-left:6px;padding-right:6px;}
   .pb{padding-left:8px;padding-right:8px;}
-  .mkt-table tr.asset-row{grid-template-columns:20px minmax(0,1fr) 52px 58px 104px;gap:5px;min-height:96px;}
-  .mkt-spk{height:62px;}
-  .mkt-candle{width:18px;height:52px;}
+  .mkt-table tr.asset-row{grid-template-columns:18px minmax(0,1fr) 56px 64px 104px;gap:4px;min-height:86px;}
+  .mkt-spk{height:66px;}
+  .mkt-candle{width:16px;height:48px;}
   .mkt-name-main{font-size:12px;}
   .mkt-region{font-size:11px;}
   .mkt-facility{font-size:12px;}
@@ -276,11 +287,13 @@ body{min-height:100vh;background:#140c04;background-image:radial-gradient(ellips
 .log-e.time{border-color:var(--ink3);}
 .lt{color:var(--ink3);margin-right:6px;font-size:10px;}
 /* URL setup */
-.url-setup{background:rgba(245,233,206,0.95);border:2px solid var(--gold);padding:14px;margin-bottom:14px;display:none;}
+.url-setup{background:rgba(245,233,206,0.95);border:1px solid rgba(184,134,11,0.28);box-shadow:0 10px 20px rgba(0,0,0,0.08);padding:18px;margin-bottom:14px;display:none;border-radius:16px;}
 .url-setup.show{display:block;}
-.url-setup input{width:100%;background:rgba(255,255,255,0.5);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:9px 12px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;margin:8px 0;}
-.url-setup .hint{font-size:12px;color:var(--ink3);margin-bottom:6px;line-height:1.7;}
-.btn-sm{padding:7px 14px;border:1px solid var(--gold);background:rgba(184,134,11,0.07);color:var(--gold2);font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.url-setup input{width:100%;background:rgba(255,255,255,0.85);border:1px solid rgba(222,206,150,0.7);color:var(--ink);padding:10px 14px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;margin:10px 0;border-radius:10px;}
+.url-setup input:disabled{opacity:0.75;color:var(--ink3);}
+.url-setup .hint{font-size:12px;color:var(--ink3);margin-bottom:10px;line-height:1.7;}
+.btn-sm{padding:8px 16px;border:1px solid rgba(184,134,11,0.45);background:rgba(255,255,255,0.85);color:var(--gold2);font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:700;cursor:pointer;border-radius:999px;transition:background .2s,transform .2s;}
+.btn-sm:hover{background:rgba(255,255,255,0.98);transform:translateY(-1px);}
 /* 成交 Toast */
 .order-toast{
   position:fixed;top:70px;left:50%;transform:translateX(-50%) translateY(-16px);
@@ -344,6 +357,25 @@ canvas{display:block;}
 .rank-bar{height:100%;border-radius:3px;transition:width .4s;}
 .rank-pnl{font-size:11px;font-weight:700;margin-left:4px;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>
+const USE_FIREBASE = true;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCD-5ohD5beExI_8ihlrKAmABl3TO8sWxc",
+  authDomain: "dndworld-f4ca1.firebaseapp.com",
+  databaseURL: "https://dndworld-f4ca1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dndworld-f4ca1",
+  storageBucket: "dndworld-f4ca1.firebasestorage.app",
+  messagingSenderId: "6802234923",
+  appId: "1:6802234923:web:c37cd048e3a73459f8395e",
+  measurementId: "G-NJLMZ25FPH"
+};
+
+firebase.initializeApp(FIREBASE_CONFIG);
+firebase.auth().signInAnonymously().catch(()=>{});
+</script>
 </head>
 <body>
 
@@ -528,7 +560,7 @@ canvas{display:block;}
   <div class="group-chart"><canvas id="groupViewChart"></canvas></div>
   <div class="group-list">
     <table class="mkt-table">
-      <thead><tr><th class="candle-col">K</th><th>股票</th><th>股價</th><th>漲跌幅</th><th class="chart-col">即時走勢</th><th>分類</th></tr></thead>
+      <thead><tr><th class="candle-col">K</th><th>股票</th><th style="text-align:right">股價</th><th style="text-align:right">漲跌幅</th><th class="chart-col">即時走勢</th><th>分類</th></tr></thead>
       <tbody id="groupViewBody"></tbody>
     </table>
   </div>
@@ -540,20 +572,12 @@ canvas{display:block;}
   <div class="sub">皇家貿易交易所</div>
   <div class="nav-row">
     <div class="sync-bar"><div class="sdot" id="sdot"></div><span id="slabel">連線中…</span></div>
-    <button class="btn-sm" onclick="showUrlSetup()">設定同步</button>
+    <button class="btn-sm" disabled style="opacity:.75;cursor:default">Firebase 已啟用</button>
     <span id="realClock" style="font-size:12px;color:var(--ink3)"></span>
   </div>
 </div>
 
-<!-- URL setup -->
-<div class="url-setup" id="urlSetup">
-  <div class="hint">輸入 Google Apps Script 網址，與 GM 頁面同步資料。</div>
-  <input type="url" id="urlInput" placeholder="https://script.google.com/macros/s/xxxxxxxx/exec">
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn-sm" onclick="saveUrl()" style="flex:1">確認連線</button>
-    <button class="btn-sm" onclick="document.getElementById('urlSetup').classList.remove('show')" style="border-color:var(--parch3);color:var(--ink3)">取消</button>
-  </div>
-</div>
+<!-- Firebase backend 已啟用；無需 Apps Script 同步。 -->
 
 <!-- 時間 -->
 <div class="panel"><div class="pb" style="padding:10px 16px">
@@ -573,7 +597,23 @@ canvas{display:block;}
   </div>
 </div>
 
-<!-- 世界消息（移到最上面） -->
+<!-- 世界事件紀錄 -->
+<div class="panel">
+  <div class="ph">
+    <div class="ph-title">⚡ 世界事件紀錄</div>
+    <span id="evRecordCount" style="font-size:11px;color:var(--ink3)"></span>
+  </div>
+  <div style="padding:10px 14px 6px;border-bottom:1px solid var(--parch3)">
+    <input id="evSearchInput" type="text" placeholder="🔍 搜尋事件關鍵字…"
+      oninput="renderEvRecord()"
+      style="width:100%;background:rgba(255,255,255,0.5);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;">
+  </div>
+  <div class="pb" style="padding:10px 14px">
+    <div id="evRecordList" style="max-height:420px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- 世界消息 -->
 <div class="panel">
   <div class="ph"><div class="ph-title">📜 世界消息</div></div>
   <div class="pb" style="padding:10px 14px"><div class="log-box" id="logBox"></div></div>
@@ -595,7 +635,7 @@ canvas{display:block;}
   </div>
   <div class="pb" style="padding:0;overflow-x:auto">
     <table class="mkt-table">
-      <thead><tr><th class="candle-col">K</th><th>商品</th><th>股價</th><th>漲跌幅</th><th class="chart-col">即時走勢</th><th>類別</th></tr></thead>
+      <thead><tr><th class="candle-col">K</th><th>商品</th><th style="text-align:right">股價</th><th style="text-align:right">漲跌幅</th><th class="chart-col">即時走勢</th><th>類別</th></tr></thead>
       <tbody id="mktBody"></tbody>
     </table>
   </div>
@@ -607,27 +647,26 @@ canvas{display:block;}
   <div class="pb"><div class="port-grid" id="portGrid"></div></div>
 </div>
 
-<!-- 世界事件紀錄 -->
-<div class="panel">
-  <div class="ph">
-    <div class="ph-title">⚡ 世界事件紀錄</div>
-    <span id="evRecordCount" style="font-size:11px;color:var(--ink3)"></span>
-  </div>
-  <div style="padding:10px 14px 6px;border-bottom:1px solid var(--parch3)">
-    <input id="evSearchInput" type="text" placeholder="🔍 搜尋事件關鍵字…"
-      oninput="renderEvRecord()"
-      style="width:100%;background:rgba(255,255,255,0.5);border:1px solid var(--parch3);border-bottom:2px solid var(--gold);color:var(--ink);padding:7px 10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;outline:none;">
-  </div>
-  <div class="pb" style="padding:10px 14px">
-    <div id="evRecordList" style="max-height:420px;overflow-y:auto;"></div>
-  </div>
-</div>
-
 <script>
-const URL_KEY='gran_script_url', LOCAL_KEY='gran_world_v4';
+const LOCAL_KEY='gran_world_v4';
 const SEASONS=['深冬','初春','春','暮春','初夏','盛夏','暑末','初秋','金秋','暮秋','初冬','隆冬'];
 const DAILY_LIMIT=0.10;
-const INTRADAY_SLOTS=['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00','00:00 收盤'];
+const MARKET_OPEN_HOUR=7;
+const MARKET_CLOSE_HOUR=24;
+const SLOT_MINUTES=3;
+const INTRADAY_TOTAL_MINUTES=(MARKET_CLOSE_HOUR-MARKET_OPEN_HOUR)*60;
+const INTRADAY_SLOTS=(function(){
+  const slots=[];
+  for(let i=0;i<=INTRADAY_TOTAL_MINUTES/SLOT_MINUTES;i++){
+    const total=i*SLOT_MINUTES;
+    const h=MARKET_OPEN_HOUR+Math.floor(total/60);
+    const m=total%60;
+    const hh=h===24?0:h;
+    const label=(hh<10?'0':'')+hh+':' + (m<10?'0':'')+m;
+    slots.push(h===24&&m===0?label+' \u6536\u76e4':label);
+  }
+  return slots;
+})();
 const BUY_FEE_RATE=0.02;
 const SELL_FEE_RATE=0.02;
 // 做空手續費設定
@@ -702,7 +741,7 @@ const ASSET_DESC={
   prison:     '負責收容重刑犯與死刑犯的海上孤島監獄。',
 };
 
-let SURL=localStorage.getItem(URL_KEY)||'', W=null, busy=false;
+let W=null, busy=false;
 let activePidx=-1, selAssetId=null, orderMode='buy'; // -1 = 尚未選擇玩家
 const PLAYER_UNLOCKS=new Set();
 let orderToastTimer=null;
@@ -721,8 +760,8 @@ function quoteBase(a){return intradayPlan(a)?.prevClose||a.history?.[a.history.l
 const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
 const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
 const WATCH_RULES={
-  notice:{label:'\u6ce8\u610f\u80a1',cls:'notice',buy:0.75,sell:0.65,short:0.50,cover:0.65},
-  disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
+  notice:{label:'\u8655\u7f6e\u80a1',cls:'notice',buy:0.75,sell:0.65,short:0.50,cover:0.65},
+  disposition:{label:'\u5168\u984d\u4ea4\u5272',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
 };
 function recentGain(a,days){
   const h=a.history||[];
@@ -1013,108 +1052,103 @@ function requireActiveUnlock(){
   if(!isPlayerUnlocked(activePidx)){showOrderToast('\u26a0 \u8acb\u5148\u8f38\u5165\u89d2\u8272\u5bc6\u78bc',false);return false;}
   return true;
 }
-function getPos(p,id){const raw=p.portfolio[id];if(!raw)return{qty:0,avgCost:0};if(typeof raw==='number')return{qty:raw,avgCost:0};return raw;}
-function pvOf(p){return Object.keys(p.portfolio).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
-function totalCost(p){return Object.keys(p.portfolio).reduce((s,id)=>{const pos=getPos(p,id);return s+(pos.avgCost*pos.qty);},0);}
+function getPos(p,id){const raw=(p.portfolio||{})[id];if(!raw)return{qty:0,avgCost:0};if(typeof raw==='number')return{qty:raw,avgCost:0};return raw;}
+function pvOf(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
+function totalCost(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const pos=getPos(p,id);return s+(pos.avgCost*pos.qty);},0);}
 function shortPnL(s){const a=W?.assets.find(x=>x.id===s.assetId);if(!a)return 0;return s.shortQty*(s.entryPrice-quotePrice(a));}
 function shortPnLPct(s){return s.principal>0?shortPnL(s)/s.principal*100:0;}
+
+// ── 日誌合併工具 ──
+function logKey(e){return e&&(e.uid||[e.time||'',e.text||'',e.type||'',e.gmOnly?'gm':''].join('|'));}
+function mergeLogs(a,b){
+  const out=[],seen={};
+  [].concat(a||[],b||[]).forEach(e=>{
+    const k=logKey(e);
+    if(!e||!k||seen[k])return;
+    seen[k]=true;
+    out.push(e);
+  });
+  out.sort((x,y)=>(y.ts||0)-(x.ts||0));
+  return out.slice(0,500);
+}
+function mergeEventLog(a,b){
+  const out=[],seen={};
+  [].concat(a||[],b||[]).forEach(e=>{
+    const k=e&&(e.uid||[e.time||'',e.text||'',e.type||''].join('|'));
+    if(!e||!k||seen[k])return;
+    seen[k]=true;
+    out.push(e);
+  });
+  out.sort((x,y)=>(y.ts||0)-(x.ts||0));
+  return out.slice(0,180);
+}
+let _pendingLogs=[];
+function pendingTradeLogs(){return _pendingLogs.slice();}
+let _tradeGuard=false;
+function tradeGuardActive(){return _tradeGuard;}
+function addTradeLog(entry){
+  if(!W.log)W.log=[];
+  if(!entry.ts)entry.ts=Date.now();
+  W.log.unshift(entry);
+  _pendingLogs.push(entry);
+}
 
 // ── 同步 ──
 function setSS(state,txt){document.getElementById('sdot').className='sdot '+state;document.getElementById('slabel').textContent=txt;}
 async function pull(){
-  if(!SURL){setSS('','無同步');return null;}setSS('spin','讀取中…');
-  try{const r=await fetch(SURL+'?t='+Date.now());const j=await r.json();if(j.ok){setSS('ok','已同步');return j.data;}setSS('err','讀取失敗');return null;}
-  catch(e){setSS('err','無法連線');return null;}
-}
-function logGameOrder(e){
-  const m=String(e?.time||'').match(/(\d+)年第(\d+)日/);
-  return m?Number(m[1])*1000+Number(m[2]):0;
-}
-function logRealOrder(e){
-  if(Number.isFinite(e?.createdAt))return e.createdAt;
-  const uid=String(e?.uid||'');
-  const guess=uid.slice(0,8);
-  const n=parseInt(guess,36);
-  return Number.isFinite(n)?n:0;
-}
-function mergeLogs(cloudLog=[],localLog=[]){
-  const merged=[],seen=new Set();
-  [...localLog,...cloudLog].forEach(e=>{
-    if(!e)return;
-    // uid 優先（有 uid 的 entry 精確去重），否則退回文字比對
-    const key=e.uid||[e.time||'',e.text||'',e.type||'',e.gmOnly?'gm':''].join('|');
-    if(seen.has(key))return;
-    seen.add(key);merged.push(e);
-  });
-  merged.sort((a,b)=>(logGameOrder(b)-logGameOrder(a))||(logRealOrder(b)-logRealOrder(a)));
-  return merged.slice(0,200);
-}
-function pendingTradeLogs(){
-  try{return JSON.parse(localStorage.getItem(PENDING_TRADE_LOG_KEY)||'[]').filter(Boolean);}
-  catch(e){return [];}
-}
-function rememberPendingTradeLog(entry){
-  if(!entry)return;
-  const logs=mergeLogs([entry],pendingTradeLogs()).slice(0,80);
-  localStorage.setItem(PENDING_TRADE_LOG_KEY,JSON.stringify(logs));
-  localStorage.setItem(TRADE_GUARD_UNTIL_KEY,String(Date.now()+30000));
-}
-function tradeGuardActive(){
-  return Date.now()<Number(localStorage.getItem(TRADE_GUARD_UNTIL_KEY)||0);
-}
-function addTradeLog(entry){
-  if(!W.log)W.log=[];
-  if(!entry.createdAt)entry.createdAt=Date.now();
-  if(!entry.ts)entry.ts=entry.createdAt; // ★ GAS 排序用
-  W.log.unshift(entry);
-  rememberPendingTradeLog(entry);
-}
-function mergeEventLog(cloudLog=[],localLog=[]){
-  const merged=[],seen=new Set();
-  [...localLog,...cloudLog].forEach(e=>{
-    if(!e)return;
-    const key=[e.time||'',e.text||''].join('|');
-    if(seen.has(key))return;
-    seen.add(key);merged.push(e);
-  });
-  return merged.slice(0,120);
+  if(USE_FIREBASE){
+    setSS('spin','\u8b80\u53d6\u4e2d...');
+    try{
+      const snap=await firebase.database().ref('world').get();
+      if(!snap.exists()){setSS('err','\u7121\u8cc7\u6599');return null;}
+      setSS('ok','\u5df2\u540c\u6b65');
+      return snap.val();
+    }catch(e){setSS('err','\u7121\u6cd5\u9023\u7dda');return null;}
+  }
+  return null; // Google Apps Script fallback removed; Firebase is the only supported backend.
 }
 async function pushW(){
-  if(!SURL){localStorage.setItem(LOCAL_KEY,JSON.stringify(W));return;}
-  busy=true;setSS('spin','儲存中…');
-  try{
-    // 先拉最新完整資料，把玩家操作（持倉/現金）合併進去，再存回去
-    // 這樣不會蓋掉 GM 專屬資訊（market.trends 等）
-    const latest=await pull();
-    if(latest){
-      // 把玩家資料合併進完整資料（保留 GM 專屬欄位）
+  if(USE_FIREBASE){
+    busy=true;setSS('spin','\u5132\u5b58\u4e2d...');
+    try{
       const localLog=mergeLogs(W.log||[],pendingTradeLogs());
       const localEventLog=W.eventLog||[];
-      latest.players=W.players;
-      latest.log=mergeLogs(latest.log,localLog);
-      latest.eventLog=mergeEventLog(latest.eventLog,localEventLog);
-      latest.lastSaved=Date.now();
-      const r=await fetch(SURL,{method:'POST',body:JSON.stringify({action:'save',world:latest})});
-      const j=await r.json();
-      if(j.ok&&j.data){
-        const saved=sanitizeWorld(migrateAssets(j.data));
-        saved.log=mergeLogs(saved.log,latest.log);
-        saved.eventLog=mergeEventLog(saved.eventLog,latest.eventLog);
-        saved.players=latest.players;
-        saved.lastSaved=Math.max(saved.lastSaved||0,latest.lastSaved||0);
+      const savePlayers=JSON.parse(JSON.stringify(W.players||[]));
+      const result=await firebase.database().ref('world').transaction(current=>{
+        const latest=current||{};
+        latest.players=savePlayers;
+        latest.log=mergeLogs(latest.log,localLog);
+        latest.eventLog=mergeEventLog(latest.eventLog,localEventLog);
+        latest.lastSaved=Date.now();
+        return latest;
+      });
+      if(result.committed&&result.snapshot.exists()){
+        const latest=result.snapshot.val();
+        const saved=sanitizeWorld(migrateAssets(JSON.parse(JSON.stringify(latest))));
+        saved.log=mergeLogs(saved.log,localLog);
+        saved.eventLog=mergeEventLog(saved.eventLog,localEventLog);
+        if(!saved.players||!saved.players.length) saved.players=savePlayers;
+        // 活躍玩家一律以本地剛提交的資料為準，防止 Firebase 快照落後
+        if(activePidx>=0&&savePlayers[activePidx]&&saved.players[activePidx]){
+          saved.players[activePidx]=savePlayers[activePidx];
+        }
         W=saved;
-        localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
-        setSS('ok','synced');
+        _pendingLogs=[];
+      }else{
+        W.lastSaved=Date.now();
       }
-      else{setSS('err','save failed');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
-    }else{setSS('err','無法連線');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
+      localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
+      setSS('ok','\u5df2\u5132\u5b58');
+    }catch(e){setSS('err','\u7121\u6cd5\u9023\u7dda');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
+    finally{busy=false;}
+    return;
   }
-  catch(e){setSS('err','無法連線');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
-  finally{busy=false;}
+  return; // Google Apps Script fallback disabled.
 }
 function migrateAssets(world){
   if(!world.assets)world.assets=[];
-  if(world.players)world.players.forEach(p=>{if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};if(!p.watchTradeLocks)p.watchTradeLocks={};if(p.password&&!p.passPlain)p.passPlain=p.password;if(p.account&&!p.accountPlain)p.accountPlain=p.account;if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;if(p.passPlain&&!p.passHash)p.passHash='';delete p.password;delete p.account;delete p.loginAccount;});
+  if(!world.players)world.players=[];
+  if(Array.isArray(world.players))world.players.forEach(p=>{if(!p)return;if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};if(!p.watchTradeLocks)p.watchTradeLocks={};if(typeof p._tv!=='number')p._tv=0;if(p.password&&!p.passPlain)p.passPlain=p.password;if(p.account&&!p.accountPlain)p.accountPlain=p.account;if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;if(p.passPlain&&!p.passHash)p.passHash='';delete p.password;delete p.account;delete p.loginAccount;});
   if(!world.gameDay)world.gameDay=world.gameMonth||1;
   ensureAssetGroups(world);
   return world;
@@ -1127,6 +1161,42 @@ function sanitizeWorld(w){
   if(w.log)w.log=w.log.filter(e=>!e.gmOnly);
   return w;
 }
+let worldRealtimeRef=null;
+function applyCloudWorld(c){
+  if(!c)return;
+  const incoming=sanitizeWorld(migrateAssets(c));
+  const localPrivate=(W?.log||[]).filter(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
+  if((localPrivate.length||tradeGuardActive())&&W?.players){
+    incoming.players=W.players;
+  } else if(W?.players&&incoming.players){
+    // 版本號保護：若本地玩家的 _tv 比 Firebase 新，保留本地資料（防止 GM 覆蓋未同步的交易）
+    // 額外防護：Firebase portfolio 為空但本地有持倉 → GM 曾覆蓋，保留本地
+    const len=Math.min(W.players.length,incoming.players.length);
+    for(let i=0;i<len;i++){
+      const oldP=W.players[i];const newP=incoming.players[i];
+      if(!oldP||!newP)continue;
+      const localTv=oldP._tv||0;const fbTv=newP._tv||0;
+      const localHasPort=Object.keys(oldP.portfolio||{}).length>0;
+      const fbPortEmpty=Object.keys(newP.portfolio||{}).length===0;
+      if(localTv>fbTv||(localHasPort&&fbPortEmpty))incoming.players[i]=oldP;
+    }
+  }
+  incoming.log=mergeLogs(incoming.log,mergeLogs(W?.log||[],pendingTradeLogs()));
+  W=incoming;
+  localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
+  renderAll();
+  refreshSheetData();
+}
+function startRealtimeWorldListener(){
+  if(!USE_FIREBASE||worldRealtimeRef)return;
+  worldRealtimeRef=firebase.database().ref('world');
+  worldRealtimeRef.on('value',snap=>{
+    if(busy)return;
+    if(!snap.exists()){setSS('err','\u7121\u8cc7\u6599');return;}
+    setSS('ok','\u5373\u6642\u540c\u6b65');
+    applyCloudWorld(snap.val());
+  },()=>setSS('err','\u5373\u6642\u540c\u6b65\u4e2d\u65b7'));
+}
 async function init(){
   const cloud=await pull();
   if(cloud){W=sanitizeWorld(migrateAssets(cloud));W.log=mergeLogs(W.log||[],pendingTradeLogs());}
@@ -1134,32 +1204,24 @@ async function init(){
   if(!W){setSS('err','無法載入資料');return;}
   if(W.assets.length)selAssetId=W.assets.filter(a=>!a.delisted)[0]?.id;
   renderAll();
-  if(!SURL)document.getElementById('urlSetup').classList.add('show');
-}
-setInterval(async()=>{
-  if(!SURL||busy)return;  // busy=true 代表玩家剛下單正在 push，此時跳過 pull 避免衝突
-  const c=await pull();
-  if(c){
-    const cloudNewer=(c.lastSaved||0)>(W?.lastSaved||0);
-    const dayChanged=(c.gameDay||1)!==(W?.gameDay||1)||(c.gameYear||1)!==(W?.gameYear||1);
-    if(cloudNewer||dayChanged){
-      const incoming=sanitizeWorld(migrateAssets(c));
-      // ★ 保護本地玩家資料：若玩家有未上傳的交易（本地 log 有雲端沒有的 privateTrade 條目）
-      // 則保留本地 players 不被雲端覆蓋，並合併 log
-      const localPrivate=(W?.log||[]).filter(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
-      if((localPrivate.length||tradeGuardActive())&&W?.players){
-        incoming.players=W.players;
+  startRealtimeWorldListener();
+  // 5 秒 polling：主動拉取，不依賴 real-time listener
+  setInterval(async()=>{
+    if(busy||!USE_FIREBASE)return;
+    try{
+      const snap=await firebase.database().ref('world').get();
+      if(!snap.exists())return;
+      const c=snap.val();
+      if(c&&(c.lastSaved||0)>(W?.lastSaved||0)){
+        applyCloudWorld(c);
+        const t=new Date();
+        setSS('ok',`已同步 ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`);
       }
-      // 合併 log：保留本地玩家交易條目
-      incoming.log=mergeLogs(incoming.log,mergeLogs(W?.log||[],pendingTradeLogs()));
-      W=incoming;
-      localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
-      renderAll();refreshSheetData();
-    }
-  }
-},8000);
-function showUrlSetup(){document.getElementById('urlSetup').classList.add('show');}
-function saveUrl(){const u=document.getElementById('urlInput').value.trim();if(!u.startsWith('https://script.google.com')){alert('請輸入正確的 Apps Script 網址');return;}SURL=u;localStorage.setItem(URL_KEY,u);document.getElementById('urlSetup').classList.remove('show');init();}
+    }catch(e){setSS('err','同步失敗');}
+  },5000);
+}
+// Firebase Realtime Database listener replaces the old polling loop.
+// Firebase 已啟用，無需 Apps Script 或 URL 設定。
 
 // ── 時間 ──
 function renderTime(){
@@ -1178,7 +1240,8 @@ function renderPlayerChips(){
     hint.textContent='⚠ 請先選擇操作角色';
     el.appendChild(hint);
   }
-  W.players.forEach((p,i)=>{
+  (W.players||[]).forEach((p,i)=>{
+    if(!p)return;
     const btn=document.createElement('button');
     btn.className='pchip'+(i===activePidx?' active':'');
     const unlocked=isPlayerUnlocked(i);
@@ -1259,24 +1322,25 @@ function drawSpk(a,cid){
   ctx.clearRect(0,0,CW,CH);
   if(P&&P.points&&P.points.length){
     const pts=P.points;
-    const mn=P.prevClose*0.9,mx=P.prevClose*1.1,rng=mx-mn||1;
+    // Symmetric Y range centered on prevClose so baseline is always at mid-height
+    const mn=P.prevClose*0.9, mx=P.prevClose*1.1, rng=mx-mn||1;
     ctx.fillStyle='rgba(255,255,255,.18)';
     ctx.fillRect(0,0,CW,CH);
-    const baseY=(CH-5)-((P.prevClose-mn)/rng)*(CH-10);
+    const baseY=CH-((P.prevClose-mn)/rng)*CH;
     const redGrad=ctx.createLinearGradient(0,0,0,baseY);
     redGrad.addColorStop(0,'rgba(220,48,32,.35)');
     redGrad.addColorStop(1,'rgba(220,48,32,0)');
     const greenGrad=ctx.createLinearGradient(0,baseY,0,CH);
     greenGrad.addColorStop(0,'rgba(24,160,80,0)');
     greenGrad.addColorStop(1,'rgba(24,160,80,.30)');
-    fillMiniArea(ctx,pts,P,true,CW,CH,redGrad);
-    fillMiniArea(ctx,pts,P,false,CW,CH,greenGrad);
+    fillMiniArea(ctx,pts,P,true,CW,CH,redGrad,mn,mx);
+    fillMiniArea(ctx,pts,P,false,CW,CH,greenGrad,mn,mx);
     ctx.strokeStyle='rgba(106,72,32,0.28)';
     ctx.lineWidth=0.5;
     ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(CW,baseY);ctx.stroke();ctx.setLineDash([]);
-    drawMiniLineSegments(ctx,pts,P,CW,CH);
+    drawMiniLineSegments(ctx,pts,P,CW,CH,mn,mx);
     const lp=pts[pts.length-1];
-    const lx=(lp.slot/(INTRADAY_SLOTS.length-1))*CW, ly=(CH-5)-((lp.price-mn)/rng)*(CH-10);
+    const lx=(lp.slot/(INTRADAY_SLOTS.length-1))*CW, ly=CH-((lp.price-mn)/rng)*CH;
     ctx.fillStyle=lp.price>=P.prevClose?'#e03020':'#18a050';
     ctx.beginPath();ctx.arc(lx,ly,2,0,Math.PI*2);ctx.fill();
     return;
@@ -1288,32 +1352,45 @@ function drawSpk(a,cid){
   ctx.strokeStyle=chCol(gc(a));ctx.lineWidth=0.8;ctx.beginPath();
   d.forEach((v,i)=>{const x=(i/(d.length-1))*CW,y=(CH-4)-((v-mn)/rng)*(CH-8);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
 }
-function miniXY(pt,P,CW,CH){
-  const mn=P.prevClose*0.9,mx=P.prevClose*1.1,rng=mx-mn||1;
-  return{x:(pt.slot/(INTRADAY_SLOTS.length-1))*CW,y:(CH-5)-((pt.price-mn)/rng)*(CH-10)};
+function miniXY(pt,P,CW,CH,mn,mx){
+  if(mn===undefined){mn=P.prevClose*0.9;mx=P.prevClose*1.1;}
+  const rng=mx-mn||1;
+  return{x:(pt.slot/(INTRADAY_SLOTS.length-1))*CW,y:CH-((pt.price-mn)/rng)*CH};
 }
-function fillMiniArea(ctx,pts,P,isUp,CW,CH,fillStyle){
-  const base=miniXY({slot:0,price:P.prevClose},P,CW,CH).y;
+function fillMiniArea(ctx,pts,P,isUp,CW,CH,fillStyle,mn,mx){
+  const base=miniXY({slot:0,price:P.prevClose},P,CW,CH,mn,mx).y;
   ctx.fillStyle=fillStyle;
   ctx.beginPath();
   let open=false,last=null;
-  pts.forEach(pt=>{
+  pts.forEach((pt,i)=>{
     const same=isUp?pt.price>=P.prevClose:pt.price<=P.prevClose;
-    const xy=miniXY(pt,P,CW,CH);
+    const xy=miniXY(pt,P,CW,CH,mn,mx);
+    const gap=i>0&&(pt.slot-pts[i-1].slot)>5;
+    if(gap&&open&&last){ctx.lineTo(last.x,base);ctx.closePath();open=false;last=null;}
     if(same&&!open){ctx.moveTo(xy.x,base);ctx.lineTo(xy.x,xy.y);open=true;}
-    else if(same){ctx.lineTo(xy.x,xy.y);}
+    else if(same&&!gap){ctx.lineTo(xy.x,xy.y);}
     else if(open&&last){ctx.lineTo(last.x,base);ctx.closePath();open=false;}
     last=xy;
   });
   if(open&&last){ctx.lineTo(last.x,base);ctx.closePath();}
   ctx.fill();
 }
-function drawMiniLineSegments(ctx,pts,P,CW,CH){
-  drawSegmentedByZero(ctx,pts,P,pt=>miniXY(pt,P,CW,CH),0.75);
+function drawMiniLineSegments(ctx,pts,P,CW,CH,mn,mx){
+  drawSegmentedByZero(ctx,pts,P,pt=>miniXY(pt,P,CW,CH,mn,mx),0.75);
 }
 function drawSegmentedByZero(ctx,pts,P,toXY,lineWidth){
   for(let i=1;i<pts.length;i++){
-    const a=pts[i-1],b=pts[i],pa=toXY(a),pb=toXY(b);
+    const a=pts[i-1],b=pts[i];
+    if((b.slot-a.slot)>5){
+      // Gap from trimmed data: draw a faint dashed line at prevClose level
+      const pa=toXY(a),pb=toXY(b),pc=toXY({slot:b.slot,price:P.prevClose});
+      ctx.save();
+      ctx.strokeStyle='rgba(150,130,100,0.28)';ctx.lineWidth=lineWidth*0.6;
+      ctx.setLineDash([2,5]);ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pc.x,pc.y);ctx.stroke();
+      ctx.setLineDash([]);ctx.restore();
+      continue;
+    }
+    const pa=toXY(a),pb=toXY(b);
     const aUp=a.price>=P.prevClose,bUp=b.price>=P.prevClose;
     ctx.lineWidth=lineWidth;ctx.lineCap='round';ctx.lineJoin='round';
     if(aUp===bUp){
@@ -1345,26 +1422,29 @@ function drawIntradayChart(a){
   ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
   ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
   const pad={l:58,r:16,t:18,b:34}, w=Wd-pad.l-pad.r, h=Hd-pad.t-pad.b;
-  for(let i=0;i<INTRADAY_SLOTS.length;i++){const x=pad.l+i/(INTRADAY_SLOTS.length-1)*w;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+h);ctx.stroke();}
+  for(let i=0;i<INTRADAY_SLOTS.length;i++){if(i%20!==0&&i!==INTRADAY_SLOTS.length-1)continue;const x=pad.l+i/(INTRADAY_SLOTS.length-1)*w;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+h);ctx.stroke();}
   if(!P||!pts.length){
     ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px Noto Sans TC, sans-serif';ctx.fillText('尚未開盤，等待 GM 日內盤資料',pad.l,pad.t+28);return;
   }
-  const min=P.prevClose*0.9,max=P.prevClose*1.1,rng=max-min||1;
+  // 依 slot 去重：同一 slot 只保留最後一個點，消除舊資料密集造成的混亂折線
+  const slotMap=new Map();pts.forEach(p=>{slotMap.set(p.slot,p);});
+  const drawPts=[...slotMap.values()].sort((a,b)=>a.slot-b.slot);
+  const min=P.prevClose*0.9, max=P.prevClose*1.1, rng=max-min||1;
   const x=slot=>pad.l+(slot/(INTRADAY_SLOTS.length-1))*w;
   const y=price=>pad.t+(max-price)/rng*h;
   const baseY=y(P.prevClose);
   ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
   for(let i=0;i<=4;i++){const gy=pad.t+i*h/4;ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+w,gy);ctx.stroke();}
   ctx.strokeStyle='rgba(58,32,16,0.45)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.l,baseY);ctx.lineTo(pad.l+w,baseY);ctx.stroke();ctx.setLineDash([]);
-  drawSegmentedByZero(ctx,pts,P,pt=>({x:x(pt.slot),y:y(pt.price)}),1.35);
+  drawSegmentedByZero(ctx,drawPts,P,pt=>({x:x(pt.slot),y:y(pt.price)}),1.35);
   const lp=intradayLast(P), ch=(lp.price-P.prevClose)/P.prevClose*100;
   ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(x(lp.slot),y(lp.price),2.8,0,Math.PI*2);ctx.fill();
-  const hiPt=pts.reduce((best,p)=>p.price>best.price?p:best,pts[0]);
-  const loPt=pts.reduce((best,p)=>p.price<best.price?p:best,pts[0]);
+  const hiPt=drawPts.reduce((best,p)=>p.price>best.price?p:best,drawPts[0]);
+  const loPt=drawPts.reduce((best,p)=>p.price<best.price?p:best,drawPts[0]);
   drawIntradayExtremeLabel(ctx,hiPt,'high',x,y,pad,Wd,Hd);
   drawIntradayExtremeLabel(ctx,loPt,'low',x,y,pad,Wd,Hd);
   ctx.fillStyle='#6a4820';ctx.font='12px Noto Sans TC, sans-serif';ctx.textAlign='center';
-  INTRADAY_SLOTS.forEach((s,i)=>{if(i%2===0||i===INTRADAY_SLOTS.length-1)ctx.fillText(s.replace(' 收盤',''),pad.l+i/(INTRADAY_SLOTS.length-1)*w,Hd-7);});
+  INTRADAY_SLOTS.forEach((s,i)=>{if(i%60===0||i===INTRADAY_SLOTS.length-1)ctx.fillText(s.replace(' \u6536\u76e4',''),pad.l+i/(INTRADAY_SLOTS.length-1)*w,Hd-7);});
   ctx.textAlign='left';ctx.font='13px Noto Sans TC, sans-serif';
   ctx.fillStyle=ch>=0?'#c0392b':'#27ae60';
   ctx.fillText(`日內 ${ch>=0?'+':''}${ch.toFixed(2)}%  現價 ${lp.price.toLocaleString()}G`,pad.l,pad.t+14);
@@ -1521,10 +1601,10 @@ function sheetNavAsset(dir){
   if(idx===-1) return;
   const next = active[(idx+dir+active.length)%active.length];
   selAssetId = next.id;
+  _chartAsset = next;
   _chartOffset = 0;
   _chartShowAll = true;
   refreshSheetData();
-  // 滾回頂部讓玩家看到新標的名稱
   document.getElementById('bottomSheet').scrollTop = 0;
 }
 
@@ -2309,7 +2389,7 @@ function updateOrderTotal(){
 // ── 做空持倉 ──
 function renderShortPositions(){
   const el=document.getElementById('shortPositions');el.innerHTML='';
-  const p=W?.players[activePidx];if(!p||!p.shorts||!p.shorts.length){el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px 0">尚無做空持倉</div>';return;}
+  const p=W?.players?.[activePidx];if(!p||!p.shorts||!p.shorts.length){el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:8px 0">尚無做空持倉</div>';return;}
   p.shorts.forEach((s,i)=>{
     const a=W.assets.find(x=>x.id===s.assetId);if(!a)return;
     const pnl=shortPnL(s);const pct=shortPnLPct(s);
@@ -2331,7 +2411,9 @@ function renderShortPositions(){
 
 function closeShort(idx){
   if(!requireActiveUnlock())return;
-  const p=W.players[activePidx];if(!p||!p.shorts[idx])return;
+  const p=W.players[activePidx];if(!p||!(p.shorts||[])[idx])return;
+  if(typeof p.realizedPnL!=='number')p.realizedPnL=0;
+  p._tv=(p._tv||0)+1;
   const s=p.shorts[idx];
   const a=W.assets.find(x=>x.id===s.assetId);if(!a)return;
 
@@ -2359,7 +2441,7 @@ function closeShort(idx){
   showOrderToast(`✓ ${msg}`,(pnl-closeFee)>=0);
   if(!W.log)W.log=[];
   addTradeLog({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnl>=0?'good':'bad',uid:logUid()});
-  renderAll();refreshSheetData();pushW();
+  renderShortPositions();renderAll();refreshSheetData();pushW();
 }
 
 // ── 成交 Toast ──
@@ -2373,12 +2455,19 @@ function showOrderToast(msg,ok){
 
 // ── 主要下單操作 ──
 async function doMainAction(){
-  if(!selAssetId||busy)return;
+  if(!selAssetId)return;
+  if(busy){showOrderToast('⚠ 正在儲存中，請稍後再試',false);return;}
   if(!requireActiveUnlock())return;
-  const a=W.assets.find(x=>x.id===selAssetId);if(!a||a.delisted)return;
+  const a=W.assets.find(x=>x.id===selAssetId);
+  if(!a||a.delisted){showOrderToast('⚠ 無法找到此商品',false);return;}
   if(W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
-  const q=parseInt(document.getElementById('qtyInput').value)||0;if(q<=0)return;
+  const q=parseInt(document.getElementById('qtyInput').value)||0;
+  if(q<=0){showOrderToast('⚠ 請輸入正確數量',false);return;}
   const p=W.players[activePidx];
+  if(!p.portfolio)p.portfolio={};
+  if(!p.shorts)p.shorts=[];
+  if(typeof p.realizedPnL!=='number')p.realizedPnL=0;
+  p._tv=(p._tv||0)+1;
   const total=quotePrice(a)*q;
   const pos=getPos(p,a.id);
   const timeTag=`${W.gameYear||1}年第${W.gameDay||1}日`;
@@ -2437,7 +2526,7 @@ async function doMainAction(){
 // ── 持倉卡片 ──
 function renderPortGrid(){
   const grid=document.getElementById('portGrid');grid.innerHTML='';
-  W.players.forEach((p,pidx)=>{
+  (W.players||[]).forEach((p,pidx)=>{if(!p)return;
     if(!isPlayerUnlocked(pidx)){
       const card=document.createElement('div');card.className='player-card';
       card.innerHTML=`<div class="pcard-head"><div class="pcard-name-row"><span class="pcard-name">${p.name}</span><span class="pcard-cash">\u5df2\u9396\u5b9a</span></div><div class="pcard-summary">\u8f38\u5165\u5bc6\u78bc\u5f8c\u624d\u80fd\u67e5\u770b\u6301\u5009\u8207\u4ea4\u6613</div></div>`;
@@ -2535,9 +2624,11 @@ function renderLog(){
 function renderRanking(){
   const el=document.getElementById('rankList');if(!el||!W)return;
   el.innerHTML='';
+  const players=W.players||[];
+  if(!players.length){el.innerHTML='<div style="text-align:center;padding:20px;font-size:13px;color:var(--ink3)">尚無玩家資料</div>';return;}
 
   // 計算每位玩家的總財富
-  const ranked=W.players.map(p=>{
+  const ranked=players.filter(p=>p&&p.name).map(p=>{
     const portVal=pvOf(p);                          // 持倉市值
     const shortVal=(p.shorts||[]).reduce((s,sh)=>s+shortPnL(sh),0); // 空單未實現損益
     const totalWealth=p.cash+portVal+shortVal;       // 現金＋持倉＋空單損益
@@ -2637,7 +2728,8 @@ function checkForceCloseShorts(){
 function renderAll(){
   if(!W)return;
   const forced=checkForceCloseShorts();
-  renderTime();renderPlayerChips();renderMkt();renderPortGrid();renderLog();renderRanking();renderEvRecord();
+  const _r=f=>{try{f();}catch(e){console.error('[renderAll]',f.name,e);}};
+  _r(renderTime);_r(renderPlayerChips);_r(renderMkt);_r(renderPortGrid);_r(renderLog);_r(renderRanking);_r(renderEvRecord);
   if(forced)pushW();
 }
 
@@ -2777,3 +2869,7 @@ setInterval(()=>{const n=new Date();document.getElementById('realClock').textCon
 </script>
 </body>
 </html>
+
+
+
+
