@@ -772,7 +772,9 @@ function recentGain(a,days){
 function tradeWatchInfo(a){
   const g3=recentGain(a,3), g5=recentGain(a,5), g10=recentGain(a,10), today=intradayChg(a);
   if(g3>=0.28||g5>=0.45||g10>=0.80)return WATCH_RULES.disposition;
+  if(g3<=-0.28||g5<=-0.45||g10<=-0.80)return WATCH_RULES.disposition;
   if(g3>=0.18||g5>=0.30||g10>=0.55||today>=0.08)return WATCH_RULES.notice;
+  if(g3<=-0.18||g5<=-0.30||g10<=-0.55||today<=-0.08)return WATCH_RULES.notice;
   return null;
 }
 function tradeModeRate(info,mode){return info?Math.max(0,Math.min(1,info[mode]??1)):1;}
