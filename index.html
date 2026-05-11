@@ -761,7 +761,7 @@ const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
 const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
 const WATCH_RULES={
   notice:{label:'\u8655\u7f6e\u80a1',cls:'notice',buy:0.75,sell:0.65,short:0.50,cover:0.65},
-  disposition:{label:'\u5168\u984d\u4ea4\u5272',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
+  disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
 };
 function recentGain(a,days){
   const h=a.history||[];
@@ -777,19 +777,22 @@ function tradeWatchInfo(a){
 }
 function tradeModeRate(info,mode){return info?Math.max(0,Math.min(1,info[mode]??1)):1;}
 function tradeModeText(mode){return mode==='buy'?'\u8cb7\u9032':mode==='sell'?'\u8ce3\u51fa':mode==='short'?'\u653e\u7a7a':'\u56de\u88dc';}
-function tradeHourKey(a){
+function tradeHourKey(a,info){
   const pt=intradayLast(intradayPlan(a));
-  const slot=Number.isFinite(pt?.slot)?Math.floor(pt.slot):new Date().getHours();
-  return `${W?.gameYear||1}-${W?.gameDay||1}-${slot}`;
+  const slot=Number.isFinite(pt?.slot)?Math.floor(pt.slot):Math.max(0,(new Date().getHours()-MARKET_OPEN_HOUR)*Math.round(60/SLOT_MINUTES));
+  const interval=info?.cls==='disposition'?Math.round(180/SLOT_MINUTES):Math.round(30/SLOT_MINUTES);
+  const bucket=Math.floor(slot/interval);
+  return `${W?.gameYear||1}-${W?.gameDay||1}-${info?.cls||'w'}-${bucket}`;
 }
 function tryWatchTrade(a,mode,p=W?.players?.[activePidx]){
   const info=tradeWatchInfo(a);
   if(!info)return true;
   if(!p)return false;
-  const key=tradeHourKey(a);
+  const key=tradeHourKey(a,info);
   if(!p.watchTradeLocks)p.watchTradeLocks={};
   if(p.watchTradeLocks[a.id]===key){
-    showOrderToast(`${info.label} ${a.name} \u672c\u5c0f\u6642\u5df2\u59d4\u8a17\u904e`,false);
+    const wait=info.cls==='disposition'?'3\u5c0f\u6642':'30\u5206\u9418';
+    showOrderToast(`${info.label} ${a.name} ${wait}\u5167\u5df2\u59d4\u8a17\u904e`,false);
     return false;
   }
   p.watchTradeLocks[a.id]=key;
@@ -1365,7 +1368,7 @@ function fillMiniArea(ctx,pts,P,isUp,CW,CH,fillStyle,mn,mx){
   pts.forEach((pt,i)=>{
     const same=isUp?pt.price>=P.prevClose:pt.price<=P.prevClose;
     const xy=miniXY(pt,P,CW,CH,mn,mx);
-    const gap=i>0&&(pt.slot-pts[i-1].slot)>5;
+    const gap=i>0&&(pt.slot-pts[i-1].slot)>65;
     if(gap&&open&&last){ctx.lineTo(last.x,base);ctx.closePath();open=false;last=null;}
     if(same&&!open){ctx.moveTo(xy.x,base);ctx.lineTo(xy.x,xy.y);open=true;}
     else if(same&&!gap){ctx.lineTo(xy.x,xy.y);}
@@ -1381,7 +1384,7 @@ function drawMiniLineSegments(ctx,pts,P,CW,CH,mn,mx){
 function drawSegmentedByZero(ctx,pts,P,toXY,lineWidth){
   for(let i=1;i<pts.length;i++){
     const a=pts[i-1],b=pts[i];
-    if((b.slot-a.slot)>5){
+    if((b.slot-a.slot)>65){
       // Gap from trimmed data: draw a faint dashed line at prevClose level
       const pa=toXY(a),pb=toXY(b),pc=toXY({slot:b.slot,price:P.prevClose});
       ctx.save();
