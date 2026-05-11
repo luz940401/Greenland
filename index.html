@@ -760,8 +760,8 @@ function quoteBase(a){return intradayPlan(a)?.prevClose||a.history?.[a.history.l
 const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
 const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
 const WATCH_RULES={
-  notice:{label:'\u8655\u7f6e\u80a1',cls:'notice',buy:0.75,sell:0.65,short:0.50,cover:0.65},
-  disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.45,sell:0.35,short:0.20,cover:0.40}
+  notice:{label:'\u6ce8\u610f\u80a1',cls:'notice',buy:0.90,sell:0.85,short:0.70,cover:0.85},
+  disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.55,sell:0.45,short:0.25,cover:0.45}
 };
 function recentGain(a,days){
   const h=a.history||[];
@@ -771,10 +771,11 @@ function recentGain(a,days){
 }
 function tradeWatchInfo(a){
   const g3=recentGain(a,3), g5=recentGain(a,5), g10=recentGain(a,10), today=intradayChg(a);
-  if(g3>=0.28||g5>=0.45||g10>=0.80)return WATCH_RULES.disposition;
-  if(g3<=-0.28||g5<=-0.45||g10<=-0.80)return WATCH_RULES.disposition;
-  if(g3>=0.18||g5>=0.30||g10>=0.55||today>=0.08)return WATCH_RULES.notice;
-  if(g3<=-0.18||g5<=-0.30||g10<=-0.55||today<=-0.08)return WATCH_RULES.notice;
+  // 處置股：≈連3漲跌停，比照台股分盤交易標準
+  if(g3>=0.27||g5>=0.35||g10>=0.45)return WATCH_RULES.disposition;
+  if(g3<=-0.27||g5<=-0.35||g10<=-0.45)return WATCH_RULES.disposition;
+  // 注意股：比照台股公告警示標準
+  if(g3>=0.15||g5>=0.20||g10>=0.25||Math.abs(today)>=0.08)return WATCH_RULES.notice;
   return null;
 }
 function tradeModeRate(info,mode){return info?Math.max(0,Math.min(1,info[mode]??1)):1;}
@@ -782,23 +783,25 @@ function tradeModeText(mode){return mode==='buy'?'\u8cb7\u9032':mode==='sell'?'\
 function tradeHourKey(a,info){
   const pt=intradayLast(intradayPlan(a));
   const slot=Number.isFinite(pt?.slot)?Math.floor(pt.slot):Math.max(0,(new Date().getHours()-MARKET_OPEN_HOUR)*Math.round(60/SLOT_MINUTES));
-  const interval=info?.cls==='disposition'?Math.round(180/SLOT_MINUTES):Math.round(30/SLOT_MINUTES);
-  const bucket=Math.floor(slot/interval);
+  const bucket=Math.floor(slot/Math.round(30/SLOT_MINUTES)); // \u8655\u7f6e\u80a1\uff1a30\u5206\u9418\u4e00\u683c
   return `${W?.gameYear||1}-${W?.gameDay||1}-${info?.cls||'w'}-${bucket}`;
 }
 function tryWatchTrade(a,mode,p=W?.players?.[activePidx]){
   const info=tradeWatchInfo(a);
   if(!info)return true;
   if(!p)return false;
+  const rate=tradeModeRate(info,mode);
+  if(info.cls==='notice'){
+    return true; // \u6ce8\u610f\u80a1\uff1a\u50c5\u516c\u544a\u8b66\u793a\uff0c\u4ea4\u6613\u4e0d\u53d7\u5f71\u97ff
+  }
+  // \u8655\u7f6e\u80a1\uff1a30\u5206\u9418\u51b7\u537b + \u5931\u6557\u7387
   const key=tradeHourKey(a,info);
   if(!p.watchTradeLocks)p.watchTradeLocks={};
   if(p.watchTradeLocks[a.id]===key){
-    const wait=info.cls==='disposition'?'3\u5c0f\u6642':'30\u5206\u9418';
-    showOrderToast(`${info.label} ${a.name} ${wait}\u5167\u5df2\u59d4\u8a17\u904e`,false);
+    showOrderToast(`${info.label} ${a.name} 30\u5206\u9418\u5167\u5df2\u59d4\u8a17\u904e`,false);
     return false;
   }
   p.watchTradeLocks[a.id]=key;
-  const rate=tradeModeRate(info,mode);
   if(Math.random()<rate)return true;
   showOrderToast(`${info.label} ${a.name} ${tradeModeText(mode)}\u672a\u6210\u4ea4`,false);
   if(typeof pushW==='function')pushW();
@@ -807,7 +810,7 @@ function tryWatchTrade(a,mode,p=W?.players?.[activePidx]){
 function watchBadge(a){
   const info=tradeWatchInfo(a);
   if(!info)return '';
-  const bg=info.cls==='disposition'?'#7b2d12':'#b8860b';
+  const bg=info.cls==='disposition'?'#b02020':'#b8860b';
   return `<span class="limit-badge" style="background:${bg};color:#fff">${info.label}</span>`;
 }
 const tradeDayKey=()=>`${W?.gameYear||1}-${W?.gameDay||1}`;
