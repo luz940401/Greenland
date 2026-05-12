@@ -49,10 +49,18 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:li
 .season-pill{padding:4px 14px;border:1px solid var(--gold);font-size:13px;font-weight:500;color:var(--gold2);}
 /* 玩家選擇 */
 .player-chips{display:flex;gap:8px;flex-wrap:wrap;}
-.pchip{padding:8px 14px;border:2px solid var(--parch3);background:transparent;color:var(--ink3);font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.pchip{padding:8px 14px;border:2px solid var(--parch3);background:transparent;color:var(--ink3);font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;flex-shrink:0;min-height:48px;}
 .pchip.active{border-color:var(--gold);background:rgba(184,134,11,0.12);color:var(--ink);font-weight:700;}
 .pchip-cash{font-size:10px;display:block;margin-top:2px;color:var(--dn);}
 /* 市場表格 */
+.market-controls{padding:10px 14px 8px;border-bottom:1px solid rgba(222,206,150,0.55);background:rgba(255,255,255,0.22);}
+.market-tool-row{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;}
+.market-sort-btn{border:1px solid var(--gold);background:rgba(184,134,11,0.10);color:var(--ink);font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:900;padding:7px 12px;cursor:pointer;min-height:34px;}
+.market-sort-btn.active{background:var(--gold);color:#fff;}
+.cat-filter-row{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.cat-filter-row::-webkit-scrollbar{display:none;}
+.cat-chip{border:1px solid var(--parch3);background:rgba(255,255,255,0.42);color:var(--ink3);font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:900;padding:7px 12px;cursor:pointer;white-space:nowrap;min-height:34px;flex:0 0 auto;}
+.cat-chip.active{border-color:var(--gold);background:rgba(184,134,11,0.16);color:var(--ink);}
 .mkt-table{width:100%;border-collapse:separate;border-spacing:0 5px;}
 .mkt-table th{font-size:11px;font-weight:700;color:var(--ink2);padding:8px 10px;border-bottom:2px solid rgba(222,206,150,0.45);text-align:left;letter-spacing:1px;white-space:nowrap;background:linear-gradient(180deg, rgba(255,255,255,0.94), rgba(245,233,206,0.95));}
 .mkt-table td{padding:8px 10px;border:none;vertical-align:middle;}
@@ -222,6 +230,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:li
   .mkt-spk{height:88px;}
 }
 @media(max-width:620px){
+  .player-chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+  .player-chips .role-hint{grid-column:1/-1;}
+  .pchip{width:100%;padding:8px 4px;min-height:54px;font-size:12px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.2;}
+  .pchip-cash{font-size:9.5px;line-height:1.2;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+  .market-tool-row{justify-content:stretch;}
+  .market-sort-btn{width:100%;}
   .mkt-table thead{display:none;}
   .mkt-table,.mkt-table tbody{display:block;width:100%;}
   .mkt-table tr.asset-row{display:grid;grid-template-columns:22px minmax(0,1fr) 62px 70px 118px;gap:5px;align-items:center;padding:8px 6px;border-bottom:1px solid var(--parch3);min-height:92px;}
@@ -633,6 +647,12 @@ firebase.auth().signInAnonymously().catch(()=>{});
     <div class="ph-title">✦ 市場行情</div>
     <span style="font-size:12px;color:var(--ink3)">點擊商品開啟買賣 📈</span>
   </div>
+  <div class="market-controls">
+    <div class="market-tool-row">
+      <button class="market-sort-btn" id="mktSortBtn" onclick="toggleMarketSort()">漲跌幅排序</button>
+    </div>
+    <div class="cat-filter-row" id="mktCatFilters"></div>
+  </div>
   <div class="pb" style="padding:0;overflow-x:auto">
     <table class="mkt-table">
       <thead><tr><th class="candle-col">K</th><th>商品</th><th style="text-align:right">股價</th><th style="text-align:right">漲跌幅</th><th class="chart-col">即時走勢</th><th>類別</th></tr></thead>
@@ -743,6 +763,7 @@ const ASSET_DESC={
 
 let W=null, busy=false;
 let activePidx=-1, selAssetId=null, orderMode='buy'; // -1 = 尚未選擇玩家
+let marketSortByChg=false, marketCatFilter='all';
 const PLAYER_UNLOCKS=new Set();
 let orderToastTimer=null;
 const PENDING_TRADE_LOG_KEY='gran_pending_trade_logs_v1';
@@ -814,7 +835,15 @@ function watchBadge(a){
   return `<span class="limit-badge" style="background:${bg};color:#fff">${info.label}</span>`;
 }
 const tradeDayKey=()=>`${W?.gameYear||1}-${W?.gameDay||1}`;
-function ensureDayTrades(p){if(!p.dayTrades)p.dayTrades={};const k=tradeDayKey();if(!p.dayTrades[k])p.dayTrades[k]={buys:{},offsets:[]};return p.dayTrades[k];}
+function ensureDayTrades(p){
+  if(!p.dayTrades)p.dayTrades={};
+  const k=tradeDayKey();
+  if(!p.dayTrades[k])p.dayTrades[k]={buys:{},offsets:[]};
+  const d=p.dayTrades[k];
+  if(!d.buys||typeof d.buys!=='object')d.buys={};
+  if(!Array.isArray(d.offsets))d.offsets=[];
+  return d;
+}
 function dayTradeBadge(assetId){
   if(!isPlayerUnlocked(activePidx))return '';
   const p=W?.players?.[activePidx];if(!p||!p.dayTrades)return '';
@@ -1060,7 +1089,15 @@ function requireActiveUnlock(){
   if(!isPlayerUnlocked(activePidx)){showOrderToast('\u26a0 \u8acb\u5148\u8f38\u5165\u89d2\u8272\u5bc6\u78bc',false);return false;}
   return true;
 }
-function getPos(p,id){const raw=(p.portfolio||{})[id];if(!raw)return{qty:0,avgCost:0};if(typeof raw==='number')return{qty:raw,avgCost:0};return raw;}
+function getPos(p,id){
+  const raw=(p.portfolio||{})[id];
+  // 如果無此持倉，返回預設零持倉
+  if(!raw)return{qty:0,avgCost:0};
+  // 相容舊格式：數字表示數量
+  if(typeof raw==='number')return{qty:raw,avgCost:0};
+  // 新格式：確保 qty 和 avgCost 都存在
+  return{qty:Number(raw.qty)||0,avgCost:Number(raw.avgCost)||0};
+}
 function pvOf(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
 function totalCost(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const pos=getPos(p,id);return s+(pos.avgCost*pos.qty);},0);}
 function shortPnL(s){const a=W?.assets.find(x=>x.id===s.assetId);if(!a)return 0;return s.shortQty*(s.entryPrice-quotePrice(a));}
@@ -1095,6 +1132,8 @@ function pendingTradeLogs(){return _pendingLogs.slice();}
 let _tradeGuard=false;
 let _preTradeCash=null; // 記錄交易前現金，用於 pushW 正確計算含 GM 賞金的實際現金
 function tradeGuardActive(){return _tradeGuard;}
+function beginTradeGuard(){_tradeGuard=true;}
+function endTradeGuard(){_tradeGuard=false;}
 function addTradeLog(entry){
   if(!W.log)W.log=[];
   if(!entry.ts)entry.ts=Date.now();
@@ -1115,6 +1154,15 @@ async function pull(){
     }catch(e){setSS('err','\u7121\u6cd5\u9023\u7dda');return null;}
   }
   return null; // Google Apps Script fallback removed; Firebase is the only supported backend.
+}
+async function syncWorldBeforeTrade(){
+  if(!USE_FIREBASE||busy)return;
+  try{
+    const snap=await firebase.database().ref('world').get();
+    if(snap.exists())applyCloudWorld(snap.val());
+  }catch(e){
+    console.warn('[trade] 同步最新交易資料失敗，改用目前頁面資料',e);
+  }
 }
 async function pushW(){
   if(USE_FIREBASE){
@@ -1169,9 +1217,10 @@ async function pushW(){
       localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
       setSS('ok','\u5df2\u5132\u5b58');
     }catch(e){setSS('err','\u7121\u6cd5\u9023\u7dda');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
-    finally{busy=false;_preTradeCash=null;}
+    finally{busy=false;_preTradeCash=null;endTradeGuard();}
     return;
   }
+  endTradeGuard();
   return; // Google Apps Script fallback disabled.
 }
 function migrateAssets(world){
@@ -1189,6 +1238,12 @@ function sanitizeWorld(w){
   delete w.presetEvents;
   if(w.log)w.log=w.log.filter(e=>!e.gmOnly);
   return w;
+}
+function samePlayerSnapshot(a,b){
+  if(!a||!b)return false;
+  return (a.realizedPnL||0)===(b.realizedPnL||0)
+    && JSON.stringify(a.portfolio||{})===JSON.stringify(b.portfolio||{})
+    && JSON.stringify(a.shorts||[])===JSON.stringify(b.shorts||[]);
 }
 let worldRealtimeRef=null;
 function applyCloudWorld(c){
@@ -1210,13 +1265,21 @@ function applyCloudWorld(c){
         // 本地有新交易版本 → 完全以本地為準，不做 max（否則買股後現金會被還原）
         incoming.players[i]={...oldP};
       }else if(i===activePidx&&guardActive){
-        // 活躍玩家有待確認的在途交易 → 保留本地，但取最大現金（防 GM 賞金被蓋）
-        incoming.players[i]={...oldP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+        if(localTv<fbTv){
+          // Firebase 版本較新，但目前有活動玩家待確認交易：以雲端資料為主，仍保留較大現金
+          incoming.players[i]={...newP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+        }else{
+          // 活躍玩家有待確認的在途交易 → 保留本地，但取最大現金（防 GM 賞金被蓋）
+          incoming.players[i]={...oldP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+        }
       }else if(localTv===fbTv&&Object.keys(oldP.portfolio||{}).length>0&&Object.keys(newP.portfolio||{}).length===0){
         // 版本相同但 Firebase 持倉為空、本地有持倉 → 保留本地（防 GM 意外蓋掉）
         incoming.players[i]={...oldP,cash:Math.max(oldP.cash||0,newP.cash||0)};
-      }else{
+      }else if(localTv===fbTv&&samePlayerSnapshot(oldP,newP)){
+        // 版本一致且持倉相同時，僅保留較大現金
         incoming.players[i]={...newP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+      }else{
+        incoming.players[i]={...newP};
       }
     }
   }
@@ -1275,6 +1338,7 @@ function renderPlayerChips(){
   const el=document.getElementById('playerChips');el.innerHTML='';
   if(activePidx===-1){
     const hint=document.createElement('div');
+    hint.className='role-hint';
     hint.style.cssText='font-size:12px;color:var(--up);font-weight:700;padding:6px 0;letter-spacing:1px';
     hint.textContent='⚠ 請先選擇操作角色';
     el.appendChild(hint);
@@ -1291,9 +1355,47 @@ function renderPlayerChips(){
 }
 
 // ── 市場表格 ──
+function marketCatKey(cat){
+  const c=String(cat||'未分類').trim();
+  if(c.startsWith('戰鬥'))return '戰鬥';
+  return c||'未分類';
+}
+function marketCategories(){
+  const cats=[...new Set((W?.assets||[]).filter(a=>!a.delisted).map(a=>marketCatKey(a.cat)))];
+  return cats.sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+function setMarketCategory(cat){
+  marketCatFilter=cat||'all';
+  renderMkt();
+}
+function toggleMarketSort(){
+  marketSortByChg=!marketSortByChg;
+  renderMkt();
+}
+function escHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function renderMarketControls(){
+  const sortBtn=document.getElementById('mktSortBtn');
+  if(sortBtn){
+    sortBtn.className='market-sort-btn'+(marketSortByChg?' active':'');
+    sortBtn.textContent=marketSortByChg?'漲跌幅排序中':'漲跌幅排序';
+  }
+  const row=document.getElementById('mktCatFilters');
+  if(!row)return;
+  const cats=['all',...marketCategories()];
+  if(marketCatFilter!=='all'&&!cats.includes(marketCatFilter))marketCatFilter='all';
+  row.innerHTML=cats.map(cat=>{
+    const label=cat==='all'?'全部':cat;
+    const active=cat===marketCatFilter?' active':'';
+    return `<button class="cat-chip${active}" onclick='setMarketCategory(${JSON.stringify(cat)})'>${escHtml(label)}</button>`;
+  }).join('');
+}
 function renderMkt(){
   const tb=document.getElementById('mktBody');tb.innerHTML='';
-  W.assets.filter(a=>!a.delisted).forEach(a=>{
+  renderMarketControls();
+  let assets=W.assets.filter(a=>!a.delisted);
+  if(marketCatFilter!=='all')assets=assets.filter(a=>marketCatKey(a.cat)===marketCatFilter);
+  if(marketSortByChg)assets=assets.slice().sort((a,b)=>intradayChg(b)-intradayChg(a));
+  assets.forEach(a=>{
     const ch=intradayChg(a),pct=(ch*100).toFixed(1),sign=ch>=0?'+':'',col=chCol(ch);
     const lUp=isLimitUp(a),lDn=isLimitDn(a);
     const isSuspended=W.suspended&&W.suspended.includes(a.id);
@@ -1913,6 +2015,15 @@ function buildCandles(history,assetId){
   });
   return candles;
 }
+function intradayCandle(a){
+  const P=intradayPlan(a),pts=P?.points||[];
+  if(!P||!pts.length)return null;
+  const open=pts[0].price;
+  const close=pts[pts.length-1].price;
+  let high=Math.max(open,close),low=Math.min(open,close);
+  pts.forEach(pt=>{high=Math.max(high,pt.price);low=Math.min(low,pt.price);});
+  return{open,high,low,close,chgPct:open>0?(close-open)/open:0};
+}
 
 let _chartAsset=null, _chartCandles=[], _chartLayout={};
 let _chartType='intraday';
@@ -2020,6 +2131,10 @@ function drawSheetChart(a){
   }
 
   const candles=buildCandles(dWithToday,a.id);
+  const todayCandle=intradayCandle(a);
+  if(todayCandle&&candles.length){
+    candles[candles.length-1]={...candles[candles.length-1],...todayCandle,type:'intraday'};
+  }
   _chartAsset=a; _chartCandles=candles;
 
   const pl=52,pr=10,pt=26,pb=34;
@@ -2507,6 +2622,8 @@ async function doMainAction(){
   if(!selAssetId)return;
   if(busy){showOrderToast('⚠ 正在儲存中，請稍後再試',false);return;}
   if(!requireActiveUnlock())return;
+  await syncWorldBeforeTrade();
+  if(!requireActiveUnlock())return;
   const a=W.assets.find(x=>x.id===selAssetId);
   if(!a||a.delisted){showOrderToast('⚠ 無法找到此商品',false);return;}
   if(W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
@@ -2527,9 +2644,12 @@ async function doMainAction(){
     const payable=total+fee;
     if(p.cash<payable){showOrderToast(`${p.name} 資金不足！需 ${payable.toLocaleString()} G（含手續費），僅有 ${p.cash.toLocaleString()} G`,false);return;}
     if(!tryWatchTrade(a,'buy',p))return;
+    beginTradeGuard();
     _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
-    const nq=pos.qty+q;const na=((pos.qty*pos.avgCost)+payable)/nq;
+    // 重新計算持倉，避免使用過時的 pos 變數
+    const latestPos=getPos(p,a.id);
+    const nq=latestPos.qty+q;const na=((latestPos.qty*latestPos.avgCost)+payable)/nq;
     p.cash-=payable;p.portfolio[a.id]={qty:nq,avgCost:Math.round(na*100)/100};
     const d=ensureDayTrades(p);d.buys[a.id]=(d.buys[a.id]||0)+q;
     const msg=`${p.name} 買入《${a.name}》×${q}，成交 ${total.toLocaleString()} G（免手續費）`;
@@ -2538,16 +2658,19 @@ async function doMainAction(){
 
   }else if(orderMode==='sell'){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法賣出`,false);return;}
-    if(pos.qty<q){showOrderToast(`${p.name} 持貨不足！持有 ${pos.qty} 份`,false);return;}
+    // 重新讀取最新持倉數據，防止過期資料造成的誤判
+    const latestPos=getPos(p,a.id);
+    if(latestPos.qty<q){showOrderToast(`${p.name} 持貨不足！持有 ${latestPos.qty} 份`,false);return;}
     if(!tryWatchTrade(a,'sell',p))return;
+    beginTradeGuard();
     _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
     const fee=Math.round(total*SELL_FEE_RATE);
     const proceeds=total-fee;
-    const realized=proceeds-(pos.avgCost*q);
+    const realized=proceeds-(latestPos.avgCost*q);
     p.cash+=proceeds;p.realizedPnL+=realized;
-    const nq=pos.qty-q;
-    if(nq<=0)delete p.portfolio[a.id];else p.portfolio[a.id]={qty:nq,avgCost:pos.avgCost};
+    const nq=latestPos.qty-q;
+    if(nq<=0)delete p.portfolio[a.id];else p.portfolio[a.id]={qty:nq,avgCost:latestPos.avgCost};
     const d=ensureDayTrades(p);const offset=Math.min(d.buys[a.id]||0,q);
     if(offset>0){d.buys[a.id]-=offset;d.offsets.unshift({assetId:a.id,qty:offset,price:quotePrice(a),time:timeTag});d.offsets=d.offsets.slice(0,40);}
     const sign=realized>=0?'+':'';
@@ -2561,6 +2684,7 @@ async function doMainAction(){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法做空`,false);return;}
     if(p.cash<total){showOrderToast(`${p.name} 保證金不足！需 ${total.toLocaleString()} G`,false);return;}
     if(!tryWatchTrade(a,'short',p))return;
+    beginTradeGuard();
     _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
     p.cash-=total;
@@ -2589,6 +2713,8 @@ function renderPortGrid(){
     const pv=pvOf(p);const cost=totalCost(p);const unr=pv-cost;const rlz=p.realizedPnL||0;
     const shorts=p.shorts||[];
     const shortPnLTotal=shorts.reduce((s,sh)=>s+shortPnL(sh),0);
+    const shortPrincipalTotal=shorts.reduce((s,sh)=>s+(sh.principal||0),0);
+    const totalWealth=p.cash+pv+shortPrincipalTotal+shortPnLTotal;
     const held=Object.keys(p.portfolio).filter(id=>getPos(p,id).qty>0);
     let itemsHtml='';
     if(!held.length&&!shorts.length){itemsHtml='<div class="empty-port">尚無持倉</div>';}
@@ -2632,7 +2758,7 @@ function renderPortGrid(){
       <div class="pcard-head">
         <div class="pcard-name-row"><span class="pcard-name">${p.name}</span><span class="pcard-cash">${p.cash.toLocaleString()} G</span></div>
         <div class="pcard-summary">
-          <span>總 <strong>${(p.cash+pv).toLocaleString()} G</strong></span>
+          <span>總 <strong>${Math.round(totalWealth).toLocaleString()} G</strong></span>
           <span class="${unrCls}">未實${unr>=0?'+':''}${Math.round(unr).toLocaleString()}</span>
           <span class="${rlzCls}">已實${rlz>=0?'+':''}${Math.round(rlz).toLocaleString()}</span>
           ${shorts.length?`<span class="${spcls}">空${shortPnLTotal>=0?'+':''}${Math.round(shortPnLTotal).toLocaleString()}</span>`:''}
@@ -2684,10 +2810,11 @@ function renderRanking(){
   // 計算每位玩家的總財富
   const ranked=players.filter(p=>p&&p.name).map(p=>{
     const portVal=pvOf(p);                          // 持倉市值
-    const shortVal=(p.shorts||[]).reduce((s,sh)=>s+shortPnL(sh),0); // 空單未實現損益
-    const totalWealth=p.cash+portVal+shortVal;       // 現金＋持倉＋空單損益
-    const totalPnL=(p.realizedPnL||0)+(portVal-totalCost(p))+shortVal; // 含已實現的總損益
-    return{name:p.name,cash:p.cash,portVal,shortVal,totalWealth,totalPnL};
+    const shortPrincipal=(p.shorts||[]).reduce((s,sh)=>s+(sh.principal||0),0); // 空單本金
+    const shortUnrealized=(p.shorts||[]).reduce((s,sh)=>s+shortPnL(sh),0); // 空單未實現損益
+    const totalWealth=p.cash+portVal+shortPrincipal+shortUnrealized;       // 現金＋持倉＋空單本金＋空單損益
+    const totalPnL=(p.realizedPnL||0)+(portVal-totalCost(p))+shortUnrealized; // 含已實現的總損益
+    return{name:p.name,cash:p.cash,portVal,shortPrincipal,shortUnrealized,totalWealth,totalPnL};
   }).sort((a,b)=>b.totalWealth-a.totalWealth);
 
   const maxW=ranked[0]?.totalWealth||1;
@@ -2717,7 +2844,7 @@ function renderRanking(){
           <div class="rank-bar" style="width:${barW}%;background:${barCol}"></div>
         </div>
         <div class="rank-detail">
-          現金 ${r.cash.toLocaleString()} G・持倉 ${Math.round(r.portVal).toLocaleString()} G${r.shortVal!==0?`・空單 ${r.shortVal>=0?'+':''}${Math.round(r.shortVal).toLocaleString()} G`:''}
+          現金 ${r.cash.toLocaleString()} G・持倉 ${Math.round(r.portVal).toLocaleString()} G${r.shortPrincipal?`・空單本金 ${Math.round(r.shortPrincipal).toLocaleString()} G`:''}${r.shortUnrealized!==0?`・空單損益 ${r.shortUnrealized>=0?'+':''}${Math.round(r.shortUnrealized).toLocaleString()} G`:''}
         </div>
       </div>
       <div>
