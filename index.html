@@ -1124,7 +1124,18 @@ async function pushW(){
       const savePlayers=JSON.parse(JSON.stringify(W.players||[]));
       const result=await firebase.database().ref('world').transaction(current=>{
         const latest=current||{};
-        latest.players=savePlayers;
+        const fbp=Array.isArray(latest.players)?latest.players:[];
+        const maxLen=Math.max(savePlayers.length,fbp.length);
+        latest.players=Array.from({length:maxLen},(_,i)=>{
+          const lp=savePlayers[i],fp=fbp[i];
+          if(!fp)return lp;
+          if(!lp)return fp;
+          const ltv=lp._tv||0,ftv=fp._tv||0;
+          if(ltv>ftv)return lp;        // 本地有新交易 → 以本地為準
+          if(ltv<ftv)return fp;        // Firebase 較新（不應發生，但安全起見）
+          // 版本相同（沒有新交易）：保留本地所有欄位，但取最大現金（防止 GM 賞金被蓋掉）
+          return{...lp,cash:Math.max(fp.cash||0,lp.cash||0)};
+        });
         latest.log=mergeLogs(latest.log,localLog);
         latest.eventLog=mergeEventLog(latest.eventLog,localEventLog);
         latest.lastSaved=Date.now();
@@ -1136,9 +1147,10 @@ async function pushW(){
         saved.log=mergeLogs(saved.log,localLog);
         saved.eventLog=mergeEventLog(saved.eventLog,localEventLog);
         if(!saved.players||!saved.players.length) saved.players=savePlayers;
-        // 活躍玩家一律以本地剛提交的資料為準，防止 Firebase 快照落後
+        // 活躍玩家：恢復本地交易狀態，但保留 Firebase 已確認的現金（含 GM 賞金）
         if(activePidx>=0&&savePlayers[activePidx]&&saved.players[activePidx]){
-          saved.players[activePidx]=savePlayers[activePidx];
+          const committedCash=saved.players[activePidx].cash;
+          saved.players[activePidx]={...savePlayers[activePidx],cash:committedCash};
         }
         W=saved;
         _pendingLogs=[];
