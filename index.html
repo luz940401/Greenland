@@ -667,8 +667,8 @@ const INTRADAY_SLOTS=(function(){
   }
   return slots;
 })();
-const BUY_FEE_RATE=0.02;
-const SELL_FEE_RATE=0.02;
+const BUY_FEE_RATE=0;
+const SELL_FEE_RATE=0.01;
 // 做空手續費設定
 const SHORT_FEE_DAILY=0.02;    // 每日 2% 手續費
 
@@ -2402,11 +2402,10 @@ function updateOrderTotal(){
     const fee30=total*SHORT_FEE_DAILY*30;
     el.innerHTML=`本金：<strong>${total.toLocaleString()} G</strong>　7日手續費約 <strong style="color:var(--up)">${Math.round(fee7).toLocaleString()} G</strong>　30日約 <strong style="color:var(--up)">${Math.round(fee30).toLocaleString()} G</strong>`;
   }else if(orderMode==='buy'){
-    const fee=total*BUY_FEE_RATE;
-    el.innerHTML=`成交：<strong>${total.toLocaleString()} G</strong>　買進手續費 2%：<strong style="color:var(--up)">${Math.round(fee).toLocaleString()} G</strong>　應付 <strong>${Math.round(total+fee).toLocaleString()} G</strong>`;
+    el.innerHTML=`成交：<strong>${total.toLocaleString()} G</strong>　買進手續費：<strong style="color:var(--dn)">免費</strong>　應付 <strong>${total.toLocaleString()} G</strong>`;
   }else{
-    const fee=total*SELL_FEE_RATE;
-    el.innerHTML=`成交：<strong>${total.toLocaleString()} G</strong>　賣出手續費 2%：<strong style="color:var(--up)">${Math.round(fee).toLocaleString()} G</strong>　實收 <strong>${Math.round(total-fee).toLocaleString()} G</strong>`;
+    const fee=Math.round(total*SELL_FEE_RATE);
+    el.innerHTML=`成交：<strong>${total.toLocaleString()} G</strong>　賣出手續費 1%：<strong style="color:var(--up)">${fee.toLocaleString()} G</strong>　實收 <strong>${(total-fee).toLocaleString()} G</strong>`;
   }
 }
 
@@ -2506,7 +2505,7 @@ async function doMainAction(){
     const nq=pos.qty+q;const na=((pos.qty*pos.avgCost)+payable)/nq;
     p.cash-=payable;p.portfolio[a.id]={qty:nq,avgCost:Math.round(na*100)/100};
     const d=ensureDayTrades(p);d.buys[a.id]=(d.buys[a.id]||0)+q;
-    const msg=`${p.name} 買入《${a.name}》×${q}，成交 ${total.toLocaleString()} G，手續費 ${fee.toLocaleString()} G`;
+    const msg=`${p.name} 買入《${a.name}》×${q}，成交 ${total.toLocaleString()} G（免手續費）`;
     showOrderToast(`✓ ${msg}`,true);
     addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
 
