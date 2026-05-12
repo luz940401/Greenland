@@ -1093,6 +1093,7 @@ function mergeEventLog(a,b){
 let _pendingLogs=[];
 function pendingTradeLogs(){return _pendingLogs.slice();}
 let _tradeGuard=false;
+let _preTradeCash=null; // 記錄交易前現金，用於 pushW 正確計算含 GM 賞金的實際現金
 function tradeGuardActive(){return _tradeGuard;}
 function addTradeLog(entry){
   if(!W.log)W.log=[];
@@ -1131,7 +1132,15 @@ async function pushW(){
           if(!fp)return lp;
           if(!lp)return fp;
           const ltv=lp._tv||0,ftv=fp._tv||0;
-          if(ltv>ftv)return lp;        // 本地有新交易 → 以本地為準
+          if(ltv>ftv){
+            // 本地有新交易 → 以本地持倉為準，但現金需加回 GM 賞金差額
+            if(i===activePidx&&_preTradeCash!==null){
+              const delta=lp.cash-_preTradeCash;           // 本次交易的現金變動（買為負，賣為正）
+              const base=Math.max(fp.cash||0,_preTradeCash); // Firebase 現金（含 GM 賞金）與本地交易前現金取大
+              return{...lp,cash:Math.max(0,base+delta)};   // 套用相同的交易 delta
+            }
+            return lp;
+          }
           if(ltv<ftv)return fp;        // Firebase 較新（不應發生，但安全起見）
           // 版本相同（沒有新交易）：保留本地所有欄位，但取最大現金（防止 GM 賞金被蓋掉）
           return{...lp,cash:Math.max(fp.cash||0,lp.cash||0)};
@@ -1160,7 +1169,7 @@ async function pushW(){
       localStorage.setItem(LOCAL_KEY,JSON.stringify(W));
       setSS('ok','\u5df2\u5132\u5b58');
     }catch(e){setSS('err','\u7121\u6cd5\u9023\u7dda');localStorage.setItem(LOCAL_KEY,JSON.stringify(W));}
-    finally{busy=false;}
+    finally{busy=false;_preTradeCash=null;}
     return;
   }
   return; // Google Apps Script fallback disabled.
@@ -1197,7 +1206,11 @@ function applyCloudWorld(c){
       // 1. 當前活躍玩家有未確認的在途交易（guardActive）
       // 2. 本地版本號比 Firebase 新（代表剛下單、Firebase 尚未寫入）
       // 現金一律取最大值，確保 GM 賞金不被蓋掉
-      if((i===activePidx&&guardActive)||localTv>fbTv){
+      if(localTv>fbTv){
+        // 本地有新交易版本 → 完全以本地為準，不做 max（否則買股後現金會被還原）
+        incoming.players[i]={...oldP};
+      }else if(i===activePidx&&guardActive){
+        // 活躍玩家有待確認的在途交易 → 保留本地，但取最大現金（防 GM 賞金被蓋）
         incoming.players[i]={...oldP,cash:Math.max(oldP.cash||0,newP.cash||0)};
       }else if(localTv===fbTv&&Object.keys(oldP.portfolio||{}).length>0&&Object.keys(newP.portfolio||{}).length===0){
         // 版本相同但 Firebase 持倉為空、本地有持倉 → 保留本地（防 GM 意外蓋掉）
@@ -2514,6 +2527,7 @@ async function doMainAction(){
     const payable=total+fee;
     if(p.cash<payable){showOrderToast(`${p.name} 資金不足！需 ${payable.toLocaleString()} G（含手續費），僅有 ${p.cash.toLocaleString()} G`,false);return;}
     if(!tryWatchTrade(a,'buy',p))return;
+    _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
     const nq=pos.qty+q;const na=((pos.qty*pos.avgCost)+payable)/nq;
     p.cash-=payable;p.portfolio[a.id]={qty:nq,avgCost:Math.round(na*100)/100};
@@ -2526,6 +2540,7 @@ async function doMainAction(){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法賣出`,false);return;}
     if(pos.qty<q){showOrderToast(`${p.name} 持貨不足！持有 ${pos.qty} 份`,false);return;}
     if(!tryWatchTrade(a,'sell',p))return;
+    _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
     const fee=Math.round(total*SELL_FEE_RATE);
     const proceeds=total-fee;
@@ -2546,6 +2561,7 @@ async function doMainAction(){
     if(isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法做空`,false);return;}
     if(p.cash<total){showOrderToast(`${p.name} 保證金不足！需 ${total.toLocaleString()} G`,false);return;}
     if(!tryWatchTrade(a,'short',p))return;
+    _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
     p.cash-=total;
     if(!p.shorts)p.shorts=[];
