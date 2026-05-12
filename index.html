@@ -770,12 +770,12 @@ function recentGain(a,days){
   return old>0?(now-old)/old:0;
 }
 function tradeWatchInfo(a){
-  const g3=recentGain(a,3), g5=recentGain(a,5), g10=recentGain(a,10), today=intradayChg(a);
-  // 處置股：≈連3漲跌停，比照台股分盤交易標準
-  if(g3>=0.27||g5>=0.35||g10>=0.45)return WATCH_RULES.disposition;
-  if(g3<=-0.27||g5<=-0.35||g10<=-0.45)return WATCH_RULES.disposition;
-  // 注意股：比照台股公告警示標準
-  if(g3>=0.15||g5>=0.20||g10>=0.25||Math.abs(today)>=0.08)return WATCH_RULES.notice;
+  const g3=recentGain(a,3), g6=recentGain(a,6);
+  // 處置股：比照台股「連3日注意→處置」精神
+  // 近3日漲跌≈連3板，或近6日累積超過±50%
+  if(g3>=0.27||g3<=-0.27||g6>=0.50||g6<=-0.50)return WATCH_RULES.disposition;
+  // 注意股：比照台股近6個營業日累積漲跌幅≥±30%（台股原始門檻32%，去除指數差幅條件後略降）
+  if(g6>=0.30||g6<=-0.30)return WATCH_RULES.notice;
   return null;
 }
 function tradeModeRate(info,mode){return info?Math.max(0,Math.min(1,info[mode]??1)):1;}
