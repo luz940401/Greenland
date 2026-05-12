@@ -1186,19 +1186,23 @@ function applyCloudWorld(c){
   if(!c)return;
   const incoming=sanitizeWorld(migrateAssets(c));
   const localPrivate=(W?.log||[]).filter(e=>e.privateTrade&&!(c.log||[]).some(x=>(x.uid&&x.uid===e.uid)||(x.time===e.time&&x.text===e.text)));
-  if((localPrivate.length||tradeGuardActive())&&W?.players){
-    incoming.players=W.players;
-  } else if(W?.players&&incoming.players){
-    // 版本號保護：若本地玩家的 _tv 比 Firebase 新，保留本地資料（防止 GM 覆蓋未同步的交易）
-    // 額外防護：Firebase portfolio 為空但本地有持倉 → GM 曾覆蓋，保留本地
+  const guardActive=localPrivate.length>0||tradeGuardActive();
+  if(W?.players&&incoming.players){
     const len=Math.min(W.players.length,incoming.players.length);
     for(let i=0;i<len;i++){
       const oldP=W.players[i];const newP=incoming.players[i];
       if(!oldP||!newP)continue;
       const localTv=oldP._tv||0;const fbTv=newP._tv||0;
-      const localHasPort=Object.keys(oldP.portfolio||{}).length>0;
-      const fbPortEmpty=Object.keys(newP.portfolio||{}).length===0;
-      if(localTv>fbTv||(localHasPort&&fbPortEmpty))incoming.players[i]=oldP;
+      // 僅在以下兩種情況保留本地資料：
+      // 1. 當前活躍玩家有未確認的在途交易（guardActive）
+      // 2. 本地版本號比 Firebase 新（代表剛下單、Firebase 尚未寫入）
+      // 現金一律取最大值，確保 GM 賞金不被蓋掉
+      if((i===activePidx&&guardActive)||localTv>fbTv){
+        incoming.players[i]={...oldP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+      }else{
+        // Firebase 資料為準，但現金仍取最大值（防 GM 賞金遺失）
+        incoming.players[i]={...newP,cash:Math.max(oldP.cash||0,newP.cash||0)};
+      }
     }
   }
   incoming.log=mergeLogs(incoming.log,mergeLogs(W?.log||[],pendingTradeLogs()));
