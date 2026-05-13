@@ -1215,6 +1215,39 @@ function addTradeLog(entry){
   W.log.unshift(entry);
   _pendingLogs.push(entry);
 }
+function recordPlayerTrade(p, entry){
+  if(!p)return;
+  if(!Array.isArray(p.tradeHistory))p.tradeHistory=[];
+  const item={
+    uid:entry.uid||logUid(),
+    ts:entry.ts||Date.now(),
+    time:entry.time||`${W.gameYear||1}年第${W.gameDay||1}日`,
+    type:entry.type||'time',
+    text:String(entry.text||'交易紀錄'),
+    assetId:entry.assetId||'',
+    assetName:entry.assetName||'',
+    product:entry.product||'stock',
+    side:entry.side||'',
+    qty:Number(entry.qty)||0,
+    price:Number(entry.price)||0,
+    gross:Number(entry.gross)||0,
+    fee:Number(entry.fee)||0,
+    pnl:Number(entry.pnl)||0,
+    cashAfter:Number(p.cash)||0
+  };
+  p.tradeHistory.unshift(item);
+  p.tradeHistory=p.tradeHistory.slice(0,15);
+}
+function mergeTradeHistory(a,b){
+  const out=[],seen={};
+  [].concat(a||[],b||[]).forEach(t=>{
+    const k=t&&(t.uid||[t.ts||'',t.time||'',t.text||''].join('|'));
+    if(!t||!k||seen[k])return;
+    seen[k]=true;out.push(t);
+  });
+  out.sort((x,y)=>(y.ts||0)-(x.ts||0));
+  return out.slice(0,15);
+}
 
 // ── 同步 ──
 function setSS(state,txt){document.getElementById('sdot').className='sdot '+state;document.getElementById('slabel').textContent=txt;}
@@ -1260,13 +1293,13 @@ async function pushW(){
             if(i===activePidx&&_preTradeCash!==null){
               const delta=lp.cash-_preTradeCash;           // 本次交易的現金變動（買為負，賣為正）
               const base=Math.max(fp.cash||0,_preTradeCash); // Firebase 現金（含 GM 賞金）與本地交易前現金取大
-              return{...lp,cash:Math.max(0,base+delta)};   // 套用相同的交易 delta
+              return{...lp,cash:Math.max(0,base+delta),tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};   // 套用相同的交易 delta
             }
-            return lp;
+            return{...lp,tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};
           }
           if(ltv<ftv)return fp;        // Firebase 較新（不應發生，但安全起見）
           // 版本相同（沒有新交易）：保留本地所有欄位，但取最大現金（防止 GM 賞金被蓋掉）
-          return{...lp,cash:Math.max(fp.cash||0,lp.cash||0)};
+          return{...lp,cash:Math.max(fp.cash||0,lp.cash||0),tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};
         });
         latest.log=mergeLogs(latest.log,localLog);
         latest.eventLog=mergeEventLog(latest.eventLog,localEventLog);
@@ -1301,7 +1334,7 @@ async function pushW(){
 function migrateAssets(world){
   if(!world.assets)world.assets=[];
   if(!world.players)world.players=[];
-  if(Array.isArray(world.players))world.players.forEach(p=>{if(!p)return;if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};if(!p.watchTradeLocks)p.watchTradeLocks={};if(typeof p._tv!=='number')p._tv=0;if(p.password&&!p.passPlain)p.passPlain=p.password;if(p.account&&!p.accountPlain)p.accountPlain=p.account;if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;if(p.passPlain&&!p.passHash)p.passHash='';delete p.password;delete p.account;delete p.loginAccount;});
+  if(Array.isArray(world.players))world.players.forEach(p=>{if(!p)return;if(typeof p.realizedPnL!=='number')p.realizedPnL=0;if(!p.portfolio)p.portfolio={};if(!p.shorts)p.shorts=[];if(!p.dayTrades)p.dayTrades={};if(!p.watchTradeLocks)p.watchTradeLocks={};if(!Array.isArray(p.tradeHistory))p.tradeHistory=[];else p.tradeHistory=p.tradeHistory.slice(0,15);if(typeof p._tv!=='number')p._tv=0;if(p.password&&!p.passPlain)p.passPlain=p.password;if(p.account&&!p.accountPlain)p.accountPlain=p.account;if(p.loginAccount&&!p.accountPlain)p.accountPlain=p.loginAccount;if(p.passPlain&&!p.passHash)p.passHash='';delete p.password;delete p.account;delete p.loginAccount;});
   if(Array.isArray(world.players))world.players.forEach(p=>{if(!p)return;if(!Array.isArray(p.futures))p.futures=[];});
   if(!world.gameDay)world.gameDay=world.gameMonth||1;
   ensureAssetGroups(world);
@@ -1313,6 +1346,7 @@ function sanitizeWorld(w){
   delete w.schedules;
   delete w.presetEvents;
   if(w.log)w.log=w.log.filter(e=>!e.gmOnly);
+  if(Array.isArray(w.players))w.players.forEach(p=>{if(p)delete p.tradeHistory;});
   return w;
 }
 function samePlayerSnapshot(a,b){
@@ -2752,6 +2786,7 @@ function closeShort(idx){
   const sign=pnl>=0?'+':'';
   const netSign=(pnl-closeFee)>=0?'+':'';
   const msg=`${p.name} 平倉《${a.name}》空單，損益 ${sign}${Math.round(pnl).toLocaleString()} G，平倉手續費 ${closeFee.toLocaleString()} G，實收 ${netSign}${Math.round(pnl-closeFee).toLocaleString()} G`;
+  recordPlayerTrade(p,{time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:msg,assetId:a.id,assetName:a.name,product:'short',side:'cover',qty:s.shortQty,price:quotePrice(a),gross:s.principal+pnl,fee:closeFee,pnl:pnl-closeFee,type:(pnl-closeFee)>=0?'good':'bad'});
   showOrderToast(`✓ ${msg}`,(pnl-closeFee)>=0);
   if(!W.log)W.log=[];
   addTradeLog({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnl>=0?'good':'bad',uid:logUid()});
@@ -2800,6 +2835,7 @@ function addFutureMargin(idx){
   f.margin=(Number(f.margin)||0)+due;
   f.marginAdded=(Number(f.marginAdded)||0)+due;
   f.lastMarginTopUp=`${W.gameYear||1}年第${W.gameDay||1}日`;
+  recordPlayerTrade(p,{time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`${p.name} 補足《${a.name}》期貨保證金 ${due.toLocaleString()} G`,assetId:a.id,assetName:a.name,product:'future',side:'margin',qty:Number(f.contracts)||0,price:quotePrice(a),gross:due,fee:0,pnl:0,type:'time'});
   showOrderToast(`✓ ${p.name} 補足《${a.name}》期貨保證金 ${due.toLocaleString()} G`,true);
   addTradeLog({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
   renderAll();refreshSheetData();pushW();
@@ -2851,6 +2887,7 @@ async function doMainAction(){
       p.realizedPnL+=r.realized;
       const sign=r.realized>=0?'+':'';
       const msg=`${p.name} 平倉《${a.name}》期貨 ${fmtQty(r.closed)} 口，損益 ${sign}${Math.round(r.realized).toLocaleString()} G`;
+      recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:'future',side:'close',qty:r.closed,price:quotePrice(a),gross:r.released+r.realized,fee:0,pnl:r.realized,type:r.realized>=0?'good':'bad'});
       showOrderToast(`✓ ${msg}`,r.realized>=0);
       addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:r.realized>=0?'good':'bad',uid:logUid()});
     }else{
@@ -2869,6 +2906,7 @@ async function doMainAction(){
       const tier=futureTierForAsset(a);
       p.futures.push({assetId:a.id,side,contracts:q,entryPrice:quotePrice(a),multiplier:FUTURE_MULTIPLIER,margin,maintenance:futureMargin(a,q,'maintenance'),marginTier:tier.tier,initialRate:tier.initial,maintenanceRate:tier.maintenance,daysHeld:0});
       const msg=`${p.name} 建立《${a.name}》期貨${side==='short'?'空':'多'}單 ${fmtQty(q)} 口，級距${tier.tier} 原始保證金 ${margin.toLocaleString()} G`;
+      recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:'future',side,qty:q,price:quotePrice(a),gross:margin,fee:0,pnl:0,type:'good'});
       showOrderToast(`${side==='short'?'↓':'▲'} ${msg}`,true);
       addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
     }
@@ -2888,6 +2926,7 @@ async function doMainAction(){
     p.cash-=payable;p.portfolio[a.id]={qty:nq,avgCost:Math.round(na*100)/100};
     const d=ensureDayTrades(p);d.buys[a.id]=(d.buys[a.id]||0)+q;
     const msg=`${p.name} ${orderProduct==='odd'?'零股':''}買入《${a.name}》×${fmtQty(q)}，成交 ${payable.toLocaleString()} G（免手續費）`;
+    recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:orderProduct==='odd'?'odd':'stock',side:'buy',qty:q,price:quotePrice(a),gross:payable,fee,pnl:0,type:'good'});
     showOrderToast(`✓ ${msg}`,true);
     addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
 
@@ -2912,6 +2951,7 @@ async function doMainAction(){
     const pnlType=realized>=0?'good':'bad';
     const dayTradeText=offset>0?`，當日沖銷 ×${offset}`:'';
     const msg=`${p.name} ${orderProduct==='odd'?'零股':''}賣出《${a.name}》×${fmtQty(q)}，成交 ${Math.round(total).toLocaleString()} G，手續費 ${fee.toLocaleString()} G，損益 ${sign}${Math.round(realized).toLocaleString()} G${dayTradeText}`;
+    recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:orderProduct==='odd'?'odd':'stock',side:'sell',qty:q,price:quotePrice(a),gross:Math.round(total),fee,pnl:realized,type:pnlType});
     showOrderToast(`✓ ${msg}`,realized>=0);
     addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnlType,uid:logUid()});
 
@@ -2927,6 +2967,7 @@ async function doMainAction(){
     if(!p.shorts)p.shorts=[];
     p.shorts.push({assetId:a.id,shortQty:q,entryPrice:quotePrice(a),principal:total,daysHeld:0});
     const msg=`${p.name} 做空《${a.name}》×${q}，鎖定本金 ${total.toLocaleString()} G`;
+    recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:'short',side:'open',qty:q,price:quotePrice(a),gross:total,fee:0,pnl:0,type:'good'});
     showOrderToast(`↓ ${msg}`,true);
     addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
     renderShortPositions();
@@ -3163,7 +3204,9 @@ function checkForceCloseShorts(){
       p.shorts.splice(idx,1);
       if(!W.log)W.log=[];
       const aName=a?a.name:s.assetId;
-      W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`⚠ ${p.name} 《${aName}》空單虧損達50%，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G，手續費 ${forcedFee.toLocaleString()} G`,type:'bad',uid:logUid(),ts:Date.now()});
+      const text=`⚠ ${p.name} 《${aName}》空單虧損達50%，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G，手續費 ${forcedFee.toLocaleString()} G`;
+      recordPlayerTrade(p,{time:`${W.gameYear||1}年第${W.gameDay||1}日`,text,assetId:s.assetId,assetName:aName,product:'short',side:'forceCover',qty:s.shortQty,price:a?quotePrice(a):0,gross:forcedNet+forcedFee,fee:forcedFee,pnl:pnl-forcedFee,type:'bad'});
+      W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text,type:'bad',uid:logUid(),ts:Date.now()});
       anyForced=true;
     });
   });
@@ -3184,7 +3227,9 @@ function checkForceCloseShorts(){
         p.futures.splice(idx,1);
         if(!W.log)W.log=[];
         const aName=a?a.name:f.assetId;
-        W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`⚠ ${p.name} 《${aName}》期貨收盤前未補足保證金，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G`,type:'bad',uid:logUid(),ts:Date.now()});
+        const text=`⚠ ${p.name} 《${aName}》期貨收盤前未補足保證金，系統強制平倉，損益 ${Math.round(pnl).toLocaleString()} G`;
+        recordPlayerTrade(p,{time:`${W.gameYear||1}年第${W.gameDay||1}日`,text,assetId:f.assetId,assetName:aName,product:'future',side:'forceClose',qty:Number(f.contracts)||0,price:a?quotePrice(a):0,gross:net,fee:0,pnl,type:'bad'});
+        W.log.unshift({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text,type:'bad',uid:logUid(),ts:Date.now()});
         anyForced=true;
       });
     });
