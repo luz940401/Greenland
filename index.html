@@ -581,6 +581,48 @@ firebase.auth().signInAnonymously().catch(()=>{});
   </div>
 </div>
 
+<!-- 大盤指數走勢遮罩 -->
+<div class="sheet-overlay" id="idxSheetOverlay" onclick="closeIndexSheet()"></div>
+<!-- 大盤指數走勢面板 -->
+<div class="bottom-sheet" id="idxBottomSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <div class="sheet-title-wrap">
+      <div class="sheet-icon">📊</div>
+      <div>
+        <div class="sheet-name">格蘭大陸加權指數</div>
+        <div class="sheet-cat" id="idxSheetSub">加權指數</div>
+      </div>
+    </div>
+    <button class="sheet-close" onclick="closeIndexSheet()">✕</button>
+  </div>
+  <div class="sheet-price-row">
+    <div class="sheet-price" id="idxSheetPrice">──</div>
+    <div class="sheet-chg" id="idxSheetChg"></div>
+  </div>
+  <div id="idxSheetStats" style="display:flex;gap:0;border-top:1px solid var(--parch3);border-bottom:1px solid var(--parch3);margin-bottom:2px;"></div>
+  <div id="idxSheetRangeBar" style="padding:6px 16px 4px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--parch3);min-height:28px;"></div>
+  <div class="chart-toolbar">
+    <div class="chart-type-btns">
+      <button class="ct-btn active" id="idxCtBtnIntraday" onclick="switchIndexChartType('intraday')">⏱ 日內波動</button>
+      <button class="ct-btn" id="idxCtBtnLine" onclick="switchIndexChartType('line')">📈 走勢圖</button>
+      <button class="ct-btn" id="idxCtBtnCandle" onclick="switchIndexChartType('candle')">🕯 K棒</button>
+    </div>
+    <div id="idxMaChecks" class="ma-checks" style="display:none">
+      <span style="font-size:10px;color:var(--ink3);margin-right:2px">均線：</span>
+      <label class="ma-chip" id="idxMaChip5"  style="--ma-color:#e8a020;--ma-rgb:232,160,32"  onclick="toggleIdxMA(5)"> <span class="ma-dot"></span>MA5</label>
+      <label class="ma-chip" id="idxMaChip10" style="--ma-color:#3b9fe8;--ma-rgb:59,159,232"  onclick="toggleIdxMA(10)"><span class="ma-dot"></span>MA10</label>
+      <label class="ma-chip" id="idxMaChip20" style="--ma-color:#cc44cc;--ma-rgb:204,68,204"  onclick="toggleIdxMA(20)"><span class="ma-dot"></span>MA20</label>
+      <label class="ma-chip" id="idxMaChip60" style="--ma-color:#44ccaa;--ma-rgb:68,204,170"  onclick="toggleIdxMA(60)"><span class="ma-dot"></span>MA60</label>
+    </div>
+  </div>
+  <div class="sheet-chart-wrap" style="position:relative;overflow:hidden;touch-action:pan-y">
+    <canvas id="idxIntradayChart" height="360" style="width:100%;cursor:crosshair"></canvas>
+    <canvas id="idxHistChart" height="360" style="width:100%;cursor:crosshair;display:none"></canvas>
+    <div id="idxChartTooltip" style="display:none;position:absolute;background:rgba(20,12,4,0.92);border:1px solid var(--gold);padding:7px 11px;font-size:11px;color:#f5e9ce;pointer-events:none;z-index:10;line-height:1.8;white-space:nowrap;"></div>
+  </div>
+</div>
+
 <div class="group-view" id="groupView">
   <div class="group-view-head">
     <button class="group-back" onclick="closeGroupView()">‹</button>
@@ -657,6 +699,15 @@ firebase.auth().signInAnonymously().catch(()=>{});
   <div class="pb" style="padding:10px 14px">
     <div id="rankList"></div>
   </div>
+</div>
+
+<!-- 大盤指數 -->
+<div class="panel">
+  <div class="ph">
+    <div class="ph-title">📊 格蘭大陸加權指數</div>
+    <span style="font-size:12px;color:var(--ink3)" id="playIndexStatusTag"></span>
+  </div>
+  <div class="pb" id="playMarketIndexContent" style="padding:14px 16px;min-height:56px"></div>
 </div>
 
 <!-- 市場行情 -->
@@ -806,6 +857,16 @@ function quoteBase(a){return intradayPlan(a)?.prevClose||a.history?.[a.history.l
 function marketTradeState(){
   const S=W?.market?.intraday;
   const finalSlot=INTRADAY_SLOTS.length-1;
+  const now=new Date();
+  const yyyyMMdd=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const dateText=now.toDateString();
+  if(S&&(S.lastClosedRealDate===yyyyMMdd||S.lastClosedRealDate===dateText))return{open:false,label:'已收盤'};
+  const hour=now.getHours();
+  const minute=now.getMinutes();
+  const h24=hour===0?24:hour;
+  if(hour===0&&minute>0)return{open:false,label:'已收盤'};
+  if(h24<MARKET_OPEN_HOUR)return{open:false,label:'待開盤'};
+  if(h24>=MARKET_CLOSE_HOUR)return{open:false,label:'已收盤'};
   if(!S)return{open:false,label:'待開盤'};
   if(S.status!=='open')return{open:false,label:S.status==='closed'?'已收盤':'待開盤'};
   if((S.slot||0)>=finalSlot)return{open:false,label:'已收盤'};
@@ -1643,7 +1704,8 @@ function drawSpk(a,cid){
 function miniXY(pt,P,CW,CH,mn,mx){
   if(mn===undefined){mn=P.prevClose*0.9;mx=P.prevClose*1.1;}
   const rng=mx-mn||1;
-  return{x:(pt.slot/(INTRADAY_SLOTS.length-1))*CW,y:CH-((pt.price-mn)/rng)*CH};
+  const totalSlots=P.maxSlot||(INTRADAY_SLOTS.length-1);
+  return{x:(pt.slot/totalSlots)*CW,y:CH-((pt.price-mn)/rng)*CH};
 }
 function fillMiniArea(ctx,pts,P,isUp,CW,CH,fillStyle,mn,mx){
   const base=miniXY({slot:0,price:P.prevClose},P,CW,CH,mn,mx).y;
@@ -3152,7 +3214,8 @@ function isPlayerSafeMessage(e){
   const t=String(e.text||'');
   const blocked=[
     '今日市場日型','市場日型','日內目標','事件干涉','GM','族群指令',
-    '批次事件目標','全市場日內目標','目標收盤','波動程度'
+    '批次事件目標','全市場日內目標','目標收盤','波動程度',
+    '日盤大盤','夜盤大盤','大盤干預','夜盤推進','大盤基準','大盤排程','成分股權重','[大盤','加權指數'
   ];
   return !blocked.some(k=>t.includes(k));
 }
@@ -3310,11 +3373,360 @@ function checkForceCloseShorts(){
   }
   return anyForced;
 }
+// ══════════════════════════════════════════════
+//  大盤指數走勢面板
+// ══════════════════════════════════════════════
+let _idxChartType='intraday';
+const _idxMaActive=new Set();
+let _idxChartOffset=0;
+
+function indexIntradayPlan(){
+  const I=W?.market?.index;if(!I)return null;
+  // 夜盤開盤中時優先顯示夜盤走勢（類台指期夜盤）
+  const N=I.night;
+  if(N?.status==='open'&&(N.points||[]).length>0){
+    return{
+      points:N.points,prevClose:N.prevClose||I.day?.price||I.base||10000,
+      price:N.price,high:N.high,low:N.low,
+      isNight:true,maxSlot:N.maxSlot||82
+    };
+  }
+  if(!I.day)return null;
+  return{
+    points:I.day.points||[],prevClose:I.day.prevClose||I.base||10000,
+    price:I.day.price,high:I.day.high,low:I.day.low,
+    isNight:false,maxSlot:340
+  };
+}
+
+function openIndexSheet(){
+  if(!W||!W.market||!W.market.index)return;
+  _idxChartType='intraday';_idxChartOffset=0;
+  _updateIdxHeader();
+  document.getElementById('idxSheetOverlay').classList.add('open');
+  document.getElementById('idxBottomSheet').classList.add('open');
+  switchIndexChartType('intraday');
+}
+function closeIndexSheet(){
+  document.getElementById('idxSheetOverlay').classList.remove('open');
+  document.getElementById('idxBottomSheet').classList.remove('open');
+  document.getElementById('idxChartTooltip').style.display='none';
+}
+function _updateIdxHeader(){
+  const I=W?.market?.index;if(!I)return;
+  const D=I.day||{};
+  const dayPrice=D.price||I.base||10000;
+  const dayPrev=D.prevClose||I.base||10000;
+  const pct=(dayPrice-dayPrev)/Math.max(1,dayPrev)*100;
+  const sign=pct>=0?'+':'';const col=pct>=0?'var(--up)':'var(--dn)';
+  document.getElementById('idxSheetPrice').textContent=dayPrice.toLocaleString();
+  document.getElementById('idxSheetPrice').style.color=col;
+  document.getElementById('idxSheetChg').textContent=sign+pct.toFixed(2)+'%';
+  document.getElementById('idxSheetChg').style.color=col;
+  document.getElementById('idxSheetSub').textContent=`加權指數 · ${D.status==='open'?'交易中':'已收盤'}`;
+  const hist=I.history||[];
+  document.getElementById('idxSheetStats').innerHTML=
+    `<div class="stat-cell"><div class="stat-val" style="color:var(--up)">${Math.round(D.high||dayPrice).toLocaleString()}</div><div class="stat-lbl">今日最高</div></div>`+
+    `<div class="stat-cell"><div class="stat-val" style="color:var(--dn)">${Math.round(D.low||dayPrice).toLocaleString()}</div><div class="stat-lbl">今日最低</div></div>`+
+    `<div class="stat-cell"><div class="stat-val">${dayPrev.toLocaleString()}</div><div class="stat-lbl">昨日收盤</div></div>`+
+    `<div class="stat-cell"><div class="stat-val">${hist.length+1}</div><div class="stat-lbl">記錄天數</div></div>`;
+  const rb=document.getElementById('idxSheetRangeBar');
+  if(hist.length>=2){
+    rb.innerHTML=[{lbl:'近7日',days:7},{lbl:'近30日',days:30},{lbl:'近90日',days:90}].map(r=>{
+      const idx=Math.max(0,hist.length-1-r.days);const startP=hist[idx];if(!startP)return'';
+      const chg=(dayPrice-startP)/startP*100;const s=chg>=0?'+':'';const c2=chCol(chg);
+      return`<div class="range-chip"><span class="rc-lbl">${r.lbl}</span><span class="rc-val" style="color:${c2}">${s}${chg.toFixed(1)}%</span></div>`;
+    }).join('');
+  }else{rb.innerHTML='<span style="font-size:11px;color:var(--ink3)">歷史資料不足</span>';}
+}
+function switchIndexChartType(type){
+  _idxChartType=type;
+  ['intraday','line','candle'].forEach(t=>{
+    const b=document.getElementById('idxCtBtn'+t.charAt(0).toUpperCase()+t.slice(1));
+    if(b)b.className='ct-btn'+(t===type?' active':'');
+  });
+  const intr=document.getElementById('idxIntradayChart');
+  const hist=document.getElementById('idxHistChart');
+  if(intr)intr.style.display=type==='intraday'?'block':'none';
+  if(hist)hist.style.display=type==='intraday'?'none':'block';
+  const ma=document.getElementById('idxMaChecks');
+  if(ma)ma.style.display=type==='intraday'?'none':'flex';
+  if(type==='intraday')drawIndexIntradayChart();
+  else drawIndexHistChart(type);
+}
+function toggleIdxMA(n){
+  if(_idxMaActive.has(n))_idxMaActive.delete(n);else _idxMaActive.add(n);
+  const chip=document.getElementById('idxMaChip'+n);
+  if(chip)chip.className='ma-chip'+(_idxMaActive.has(n)?' on':'');
+  drawIndexHistChart(_idxChartType);
+}
+
+function drawIndexSpk(cid){
+  const c=document.getElementById(cid||'idxSpkCanvas');if(!c)return;
+  const P=indexIntradayPlan();
+  const ctx=c.getContext('2d');
+  const dpr=Math.min(window.devicePixelRatio||1,3);
+  const CW=Math.max(96,Math.round(c.clientWidth||c.width||360));
+  const CH=Math.max(44,Math.round(c.clientHeight||c.height||56));
+  if(c.width!==CW*dpr){c.width=CW*dpr;c.style.width=CW+'px';}
+  if(c.height!==CH*dpr){c.height=CH*dpr;c.style.height=CH+'px';}
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,CW,CH);
+  if(!P||!P.points||!P.points.length){
+    const I=W?.market?.index;
+    const h2=(I?.history||[]).slice(-20);
+    if(h2.length>1){
+      const mn=Math.min(...h2),mx=Math.max(...h2),rng=mx-mn||1;
+      ctx.strokeStyle=h2[h2.length-1]>=h2[0]?'#e03020':'#18a050';ctx.lineWidth=1;ctx.beginPath();
+      h2.forEach((v,i)=>{const x=(i/(h2.length-1))*CW,y=(CH-4)-((v-mn)/rng)*(CH-8);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+    }
+    return;
+  }
+  const pts=P.points;
+  const mn=P.prevClose*0.9,mx=P.prevClose*1.1,rng=mx-mn||1;
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,CW,CH);
+  const baseY=CH-((P.prevClose-mn)/rng)*CH;
+  const redGrad=ctx.createLinearGradient(0,0,0,baseY);
+  redGrad.addColorStop(0,'rgba(220,48,32,.35)');redGrad.addColorStop(1,'rgba(220,48,32,0)');
+  const greenGrad=ctx.createLinearGradient(0,baseY,0,CH);
+  greenGrad.addColorStop(0,'rgba(24,160,80,0)');greenGrad.addColorStop(1,'rgba(24,160,80,.30)');
+  fillMiniArea(ctx,pts,P,true,CW,CH,redGrad,mn,mx);
+  fillMiniArea(ctx,pts,P,false,CW,CH,greenGrad,mn,mx);
+  ctx.strokeStyle='rgba(106,72,32,0.28)';ctx.lineWidth=0.5;
+  ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(CW,baseY);ctx.stroke();ctx.setLineDash([]);
+  drawMiniLineSegments(ctx,pts,P,CW,CH,mn,mx);
+  const lp=pts[pts.length-1];
+  const _spkMax=P.maxSlot||(INTRADAY_SLOTS.length-1);
+  const lx=(lp.slot/_spkMax)*CW,ly=CH-((lp.price-mn)/rng)*CH;
+  ctx.fillStyle=lp.price>=P.prevClose?'#e03020':'#18a050';
+  ctx.beginPath();ctx.arc(lx,ly,2,0,Math.PI*2);ctx.fill();
+}
+
+function drawIndexIntradayChart(){
+  const c=document.getElementById('idxIntradayChart');if(!c)return;
+  const P=indexIntradayPlan(),pts=P?.points||[];
+  const wrap=c.parentElement;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2)),Hd=360;
+  c.width=Wd*dpr;c.height=Hd*dpr;c.style.width=Wd+'px';c.style.height=Hd+'px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,Wd,Hd);
+  ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
+  const pad={l:60,r:16,t:18,b:34},w=Wd-pad.l-pad.r,h=Hd-pad.t-pad.b;
+  // 支援夜盤（maxSlot=82）與日盤（maxSlot=340）的 X 軸縮放
+  const _totalSlots=P?.maxSlot||(INTRADAY_SLOTS.length-1);
+  // 建立時間標籤陣列：夜盤用 NIGHT_SLOTS 概念（5分/格），日盤用 INTRADAY_SLOTS
+  const _timeLabels=P?.isNight
+    ?(()=>{const s=[];for(let m=5;m<=415;m+=5){const hh=Math.floor(m/60),mn=m%60;s.push(`${String(hh).padStart(2,'0')}:${String(mn).padStart(2,'0')}`);}return s;})()
+    :INTRADAY_SLOTS;
+  ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
+  for(let i=0;i<=_totalSlots;i++){const step=Math.max(1,Math.round(_totalSlots/16));if(i%step!==0&&i!==_totalSlots)continue;const sx=pad.l+(i/_totalSlots)*w;ctx.beginPath();ctx.moveTo(sx,pad.t);ctx.lineTo(sx,pad.t+h);ctx.stroke();}
+  if(!P||!pts.length){
+    ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px sans-serif';ctx.textAlign='left';
+    ctx.fillText(P?.isNight?'夜盤尚未開盤':'尚未開盤，等待 GM 推進日內盤',pad.l+4,pad.t+28);return;
+  }
+  const slotMap=new Map();pts.forEach(p=>{slotMap.set(p.slot,p);});
+  const drawPts=[...slotMap.values()].sort((a,b)=>a.slot-b.slot);
+  const min=P.prevClose*0.9,max=P.prevClose*1.1,rng=max-min||1;
+  const xf=slot=>pad.l+(slot/_totalSlots)*w;
+  const yf=price=>pad.t+(max-price)/rng*h;
+  const baseY=yf(P.prevClose);
+  ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const gy=pad.t+i*h/4;ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+w,gy);ctx.stroke();}
+  ctx.strokeStyle='rgba(58,32,16,0.45)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(pad.l,baseY);ctx.lineTo(pad.l+w,baseY);ctx.stroke();ctx.setLineDash([]);
+  drawSegmentedByZero(ctx,drawPts,P,pt=>({x:xf(pt.slot),y:yf(pt.price)}),1.35);
+  const lp=drawPts[drawPts.length-1];
+  const ch=(lp.price-P.prevClose)/P.prevClose*100;
+  ctx.fillStyle=lp.price>=P.prevClose?'#c0392b':'#27ae60';
+  ctx.beginPath();ctx.arc(xf(lp.slot),yf(lp.price),2.8,0,Math.PI*2);ctx.fill();
+  const hiPt=drawPts.reduce((best,p)=>p.price>best.price?p:best,drawPts[0]);
+  const loPt=drawPts.reduce((best,p)=>p.price<best.price?p:best,drawPts[0]);
+  drawIntradayExtremeLabel(ctx,hiPt,'high',xf,yf,pad,Wd,Hd);
+  drawIntradayExtremeLabel(ctx,loPt,'low',xf,yf,pad,Wd,Hd);
+  ctx.fillStyle='#6a4820';ctx.font='12px sans-serif';ctx.textAlign='center';
+  const _lblStep=Math.max(1,Math.round(_timeLabels.length/8));
+  _timeLabels.forEach((s,i)=>{if(i%_lblStep===0||i===_timeLabels.length-1)ctx.fillText(s.replace(' 收盤',''),pad.l+(i/_totalSlots)*w,Hd-7);});
+  ctx.textAlign='left';ctx.font='13px sans-serif';
+  const _session=P.isNight?'夜盤':'日內';
+  ctx.fillStyle=ch>=0?'#c0392b':'#27ae60';
+  ctx.fillText(`${_session} ${ch>=0?'+':''}${ch.toFixed(2)}%  指數 ${lp.price.toLocaleString()}`,pad.l,pad.t+14);
+  ctx.textAlign='right';ctx.font='11px sans-serif';
+  ctx.fillStyle='#c0392b';ctx.fillText(Math.round(max).toLocaleString(),pad.l-6,pad.t+4);
+  ctx.fillStyle='#27ae60';ctx.fillText(Math.round(min).toLocaleString(),pad.l-6,pad.t+h);
+  const layout={pad,w,h,Wd,Hd,x:xf,y:yf,totalSlots:_totalSlots,timeLabels:_timeLabels};
+  c.onmousemove=e=>_showIdxTooltip(e,c,P,layout);
+  c.onclick=e=>_showIdxTooltip(e,c,P,layout);
+  c.onmouseleave=()=>{document.getElementById('idxChartTooltip').style.display='none';drawIndexIntradayChart();};
+  c.addEventListener('touchstart',e=>{if(!e.touches.length)return;e.preventDefault();const t=e.touches[0];_showIdxTooltip({clientX:t.clientX,clientY:t.clientY},c,P,layout);},{passive:false});
+}
+function _showIdxTooltip(e,c,P,layout){
+  const pt=nearestIntradayPoint(e,c,P);if(!pt)return;
+  drawIndexIntradayChart();
+  const ctx=c.getContext('2d');
+  const px=layout.x(pt.slot),py=layout.y(pt.price);
+  ctx.save();ctx.strokeStyle='rgba(58,32,16,0.55)';ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(px,layout.pad.t);ctx.lineTo(px,layout.Hd-layout.pad.b);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=pt.price>=P.prevClose?'#c0392b':'#27ae60';
+  ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.restore();
+  const tip=document.getElementById('idxChartTooltip');
+  const pct=(pt.price-P.prevClose)/P.prevClose*100;const sign=pct>=0?'+':'';const col=pct>=0?'#ff8080':'#5ddd5d';
+  const _tl=layout.timeLabels||INTRADAY_SLOTS;
+  const slotIdx=Math.max(0,Math.min(_tl.length-1,Math.round(pt.slot)));
+  tip.innerHTML=`<span style="color:var(--gold);font-weight:700">${_tl[slotIdx].replace(' 收盤','')}</span><br>指數 <strong style="color:${col}">${Math.round(pt.price).toLocaleString()}</strong><br>漲跌 <span style="color:${col}">${sign}${pct.toFixed(2)}%</span><br>昨收 ${Math.round(P.prevClose).toLocaleString()}`;
+  const rx=px/c.clientWidth;
+  tip.style.left=rx>0.6?'auto':'calc('+Math.round(rx*100)+'% + 8px)';
+  tip.style.right=rx>0.6?((1-rx)*100)+'%':'auto';
+  tip.style.top='10px';tip.style.display='block';
+}
+
+function drawIndexHistChart(type){
+  const c=document.getElementById('idxHistChart');if(!c)return;
+  const I=W?.market?.index;if(!I)return;
+  const baseHist=[...(I.history||[])];
+  if(I.day&&I.day.price&&baseHist[baseHist.length-1]!==Math.round(I.day.price))baseHist.push(Math.round(I.day.price));
+  const wrap=c.parentElement;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2)),Hd=360;
+  c.width=Wd*dpr;c.height=Hd*dpr;c.style.width=Wd+'px';c.style.height=Hd+'px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,Wd,Hd);
+  ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
+  if(baseHist.length<2){
+    ctx.fillStyle='rgba(106,72,32,0.7)';ctx.font='13px sans-serif';ctx.textAlign='left';
+    ctx.fillText('歷史資料不足，請等待 GM 推進更多日期',20,80);return;
+  }
+  const candles=buildCandles(baseHist,'__mkt_index__');
+  const SHOW=Math.min(candles.length,60);
+  const maxOff=Math.max(0,candles.length-SHOW);
+  _idxChartOffset=Math.max(0,Math.min(maxOff,_idxChartOffset));
+  const startIdx=Math.max(0,candles.length-SHOW-_idxChartOffset);
+  const visible=candles.slice(startIdx,startIdx+SHOW);
+  const pl=58,pr=12,pt2=18,pb=30;
+  const w=Wd-pl-pr,h=Hd-pt2-pb;
+  const prices=visible.flatMap(cd=>[cd.high,cd.low]);
+  const mn=Math.min(...prices),mx=Math.max(...prices),rng=mx-mn||1;
+  const gap=w/Math.max(1,visible.length);
+  const barW=Math.max(2,gap*0.55);
+  const pxf=i=>pl+(i+0.5)*gap;
+  const pyf=p=>pt2+(mx-p)/rng*h;
+  ctx.strokeStyle='rgba(106,72,32,0.15)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const gy=pt2+i*h/4;ctx.beginPath();ctx.moveTo(pl,gy);ctx.lineTo(pl+w,gy);ctx.stroke();}
+  ctx.fillStyle='rgba(74,56,16,0.55)';ctx.font='11px sans-serif';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const gy=pt2+i*h/4;ctx.fillText(Math.round(mx-i*(mx-mn)/4).toLocaleString(),pl-4,gy+4);}
+  if(type==='line'){
+    const isUp=baseHist[baseHist.length-1]>=baseHist[0];
+    const col=isUp?'#c0392b':'#27ae60';const rgb=isUp?'192,57,43':'39,174,96';
+    const grad=ctx.createLinearGradient(0,pt2,0,pt2+h);
+    grad.addColorStop(0,`rgba(${rgb},0.22)`);grad.addColorStop(1,`rgba(${rgb},0.01)`);
+    ctx.beginPath();visible.forEach((cd,i)=>{i===0?ctx.moveTo(pxf(i),pyf(cd.close)):ctx.lineTo(pxf(i),pyf(cd.close));});
+    ctx.lineTo(pxf(visible.length-1),pt2+h);ctx.lineTo(pxf(0),pt2+h);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
+    visible.forEach((cd,i)=>{i===0?ctx.moveTo(pxf(i),pyf(cd.close)):ctx.lineTo(pxf(i),pyf(cd.close));});
+    ctx.stroke();
+  }else{
+    visible.forEach((cd,i)=>{
+      const x=pxf(i),isUp2=cd.close>=cd.open;
+      const isLU=cd.type==='limit_up',isLD=cd.type==='limit_dn';
+      let sc,fc;
+      if(isLU){sc='#ff1a1a';fc='#ff1a1a';}else if(isLD){sc='#00c060';fc='#00c060';}
+      else if(isUp2){sc='#c0392b';fc='rgba(192,57,43,0.75)';}else{sc='#27ae60';fc='rgba(39,174,96,0.75)';}
+      if(isLU||isLD){
+        ctx.fillStyle=fc;ctx.fillRect(x-Math.max(3,barW*0.6)/2,pyf(cd.close)-1.5,Math.max(3,barW*0.6),3);
+      }else{
+        ctx.strokeStyle=sc;ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,pyf(cd.high));ctx.lineTo(x,pyf(cd.low));ctx.stroke();
+        const bTop=pyf(Math.max(cd.open,cd.close));
+        const bH=Math.max(2,pyf(Math.min(cd.open,cd.close))-bTop);
+        ctx.fillStyle=fc;ctx.strokeStyle=sc;
+        ctx.beginPath();ctx.rect(x-barW/2,bTop,barW,bH);ctx.fill();ctx.stroke();
+      }
+    });
+  }
+  const MA_COLORS={5:'#e8a020',10:'#3b9fe8',20:'#cc44cc',60:'#44ccaa'};
+  _idxMaActive.forEach(n=>{
+    const col2=MA_COLORS[n]||'#888';ctx.strokeStyle=col2;ctx.lineWidth=1.5;ctx.beginPath();let first=true;
+    visible.forEach((cd,i)=>{
+      const gi=startIdx+i;if(gi<n-1)return;
+      const slice=candles.slice(Math.max(0,gi-n+1),gi+1);
+      const avg=slice.reduce((s2,cd2)=>s2+cd2.close,0)/slice.length;
+      first?(ctx.moveTo(pxf(i),pyf(avg)),first=false):ctx.lineTo(pxf(i),pyf(avg));
+    });ctx.stroke();
+  });
+  const step2=Math.ceil(visible.length/6);
+  ctx.fillStyle='rgba(74,56,16,0.45)';ctx.font='9px sans-serif';ctx.textAlign='center';
+  visible.forEach((cd,i)=>{if(i%step2===0||i===visible.length-1)ctx.fillText(cd.year>1?`${cd.year}年${cd.day}日`:`第${cd.day}日`,pxf(i),Hd-5);});
+  ctx.fillStyle='rgba(184,134,11,0.45)';ctx.font='bold 9px sans-serif';ctx.textAlign='right';
+  ctx.fillText(`🔍 ${visible.length}棒 / ${candles.length}日`,Wd-pr-2,pt2+10);
+  // 拖曳
+  let _idxDrag=false,_idxDragSX=0,_idxDragOff=0;
+  c.onmousedown=e=>{_idxDrag=true;_idxDragSX=e.clientX;_idxDragOff=_idxChartOffset;};
+  c.onmousemove=e=>{if(!_idxDrag)return;const dx=e.clientX-_idxDragSX;const dp=Math.round(-dx/(gap||1));_idxChartOffset=Math.max(0,Math.min(maxOff,_idxDragOff+dp));drawIndexHistChart(type);};
+  c.onmouseup=()=>{_idxDrag=false;};c.onmouseleave=()=>{_idxDrag=false;};
+  c.addEventListener('touchstart',e=>{if(!e.touches.length)return;_idxDrag=true;_idxDragSX=e.touches[0].clientX;_idxDragOff=_idxChartOffset;},{passive:true});
+  c.addEventListener('touchmove',e=>{if(!_idxDrag||!e.touches.length)return;const dx=e.touches[0].clientX-_idxDragSX;const dp=Math.round(-dx/(gap||1));_idxChartOffset=Math.max(0,Math.min(maxOff,_idxDragOff+dp));drawIndexHistChart(type);},{passive:true});
+  c.addEventListener('touchend',()=>{_idxDrag=false;},{passive:true});
+}
+
+function renderPlayMarketIndex(){
+  const el=document.getElementById('playMarketIndexContent');
+  const tag=document.getElementById('playIndexStatusTag');
+  if(!el||!W)return;
+  const I=W?.market?.index;
+  if(!I||!I.day){
+    el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:4px 0">指數資料尚未建立，請 GM 推進日內盤。</div>';
+    return;
+  }
+  const D=I.day;
+  const N=I.night||{};
+  const nightOpen=N.status==='open';
+  if(tag){tag.textContent=nightOpen?'夜盤開盤中':'日盤';tag.style.color=nightOpen?'var(--dn)':'var(--ink3)';}
+  let mainHtml='';
+  if(nightOpen){
+    // 夜盤開盤：以夜盤指數為主要顯示，日盤收盤價作為昨收參考
+    const nPrice=N.price||(D.price||I.base||10000);
+    const nPrev=N.prevClose||(D.price||I.base||10000);
+    const nPct=(nPrice-nPrev)/Math.max(1,nPrev)*100;
+    const nSign=nPct>=0?'+':'';
+    const nCol=nPct>=0?'var(--up)':'var(--dn)';
+    const dayRef=D.price||I.base||10000;
+    mainHtml=`<div style="flex:1;min-width:160px">
+      <div style="font-size:10px;color:var(--dn);font-weight:900;letter-spacing:1px;margin-bottom:2px">🌙 ${I.name||'格蘭大陸加權指數'}　夜盤</div>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font-size:36px;font-weight:900;color:${nCol};line-height:1.1">${Math.round(nPrice).toLocaleString()}</span>
+        <span style="font-size:15px;color:${nCol};font-weight:800">${nSign}${nPct.toFixed(2)}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(N.high||nPrice).toLocaleString()} ／ 低 ${Math.round(N.low||nPrice).toLocaleString()}</div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:3px">日盤收盤（昨收基準）：${Math.round(dayRef).toLocaleString()}</div>
+    </div>`;
+  }else{
+    const dayPrice=D.price||I.base||10000;
+    const dayPrev=D.prevClose||I.base||10000;
+    const dayPct=(dayPrice-dayPrev)/Math.max(1,dayPrev)*100;
+    const daySign=dayPct>=0?'+':'';
+    const dayCol=dayPct>=0?'var(--up)':'var(--dn)';
+    mainHtml=`<div style="flex:1;min-width:160px">
+      <div style="font-size:10px;color:var(--ink3);font-weight:800;letter-spacing:1px;margin-bottom:2px">${I.name||'格蘭大陸加權指數'}　日盤</div>
+      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+        <span style="font-size:36px;font-weight:900;color:${dayCol};line-height:1.1">${dayPrice.toLocaleString()}</span>
+        <span style="font-size:15px;color:${dayCol};font-weight:800">${daySign}${dayPct.toFixed(2)}%</span>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(D.high||dayPrice).toLocaleString()} ／ 低 ${Math.round(D.low||dayPrice).toLocaleString()}</div>
+    </div>`;
+  }
+  el.innerHTML=`<div onclick="openIndexSheet()" style="cursor:pointer;display:flex;align-items:flex-start;gap:0;flex-wrap:wrap">
+    ${mainHtml}
+  </div>
+  <canvas id="idxSpkCanvas" height="40" style="width:100%;height:40px;display:block;margin-top:8px;cursor:pointer" onclick="openIndexSheet()"></canvas>`;
+  requestAnimationFrame(()=>drawIndexSpk('idxSpkCanvas'));
+}
+
 function renderAll(){
   if(!W)return;
   const forced=checkForceCloseShorts();
   const _r=f=>{try{f();}catch(e){console.error('[renderAll]',f.name,e);}};
-  _r(renderTime);_r(renderPlayerChips);_r(renderMkt);_r(renderPortGrid);_r(renderLog);_r(renderRanking);_r(renderEvRecord);
+  _r(renderTime);_r(renderPlayerChips);_r(renderPlayMarketIndex);_r(renderMkt);_r(renderPortGrid);_r(renderLog);_r(renderRanking);_r(renderEvRecord);
   if(forced)pushW();
 }
 
