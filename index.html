@@ -1177,6 +1177,32 @@ function isFuturesCloseCheckTime(){
 }
 function futuresMarginValue(p){return (p.futures||[]).reduce((s,f)=>s+(Number(f.margin)||0),0);}
 function futuresPnLValue(p){return (p.futures||[]).reduce((s,f)=>s+futurePnL(f),0);}
+function futureGroupKey(f){
+  return [f.assetId||'',f.side||'long',Number(f.multiplier)||FUTURE_MULTIPLIER].join('|');
+}
+function groupedFutures(p){
+  const groups={};
+  (p.futures||[]).forEach((f,idx)=>{
+    const contracts=Number(f.contracts)||0;
+    if(contracts<=0)return;
+    const key=futureGroupKey(f);
+    if(!groups[key]){
+      groups[key]={...f,contracts:0,entryPrice:0,margin:0,maintenance:0,_entryCost:0,_sourceIndexes:[]};
+    }
+    const g=groups[key];
+    g.contracts+=contracts;
+    g._entryCost+=(Number(f.entryPrice)||0)*contracts;
+    g.margin+=Number(f.margin)||0;
+    g.maintenance+=Number(f.maintenance)||0;
+    g._sourceIndexes.push(idx);
+  });
+  return Object.values(groups).map(g=>{
+    g.contracts=Math.round(g.contracts*1000)/1000;
+    g.entryPrice=g.contracts>0?g._entryCost/g.contracts:0;
+    delete g._entryCost;
+    return g;
+  });
+}
 
 // ── 日誌合併工具 ──
 function logKey(e){return e&&(e.uid||[e.time||'',e.text||'',e.type||'',e.gmOnly?'gm':''].join('|'));}
@@ -2069,7 +2095,7 @@ function refreshSheetData(){
     return;
   }
   const pos=getPos(p,a.id);
-  const futs=(p.futures||[]).filter(f=>f.assetId===a.id);
+  const futs=groupedFutures(p).filter(f=>f.assetId===a.id);
   const futText=futs.length?`・期貨 ${futs.map(f=>(f.side==='short'?'空':'多')+'×'+fmtQty(f.contracts)).join('、')}`:'';
   document.getElementById('spbName').textContent=p.name;
   document.getElementById('spbCash').textContent=p.cash.toLocaleString()+' G 可用';
@@ -2820,7 +2846,29 @@ function addFutureMarginFor(pidx,idx){
   }
   addFutureMargin(idx);
 }
+function addFutureMarginGroupFor(pidx,key){
+  key=decodeURIComponent(key||'');
+  if(pidx >= 0 && pidx !== activePidx){
+    if(!isPlayerUnlocked(pidx)){showOrderToast('⚠ 請先輸入該角色密碼',false);return;}
+    activePidx=pidx;
+    renderPlayerChips();
+  }
+  if(!requireActiveUnlock())return;
+  const p=W.players[activePidx];if(!p||!p.futures)return;
+  const idxs=p.futures
+    .map((f,idx)=>({f,idx}))
+    .filter(x=>futureGroupKey(x.f)===key&&futureMarginCallDue(x.f)>0)
+    .map(x=>x.idx);
+  if(!idxs.length){showOrderToast('✓ 此期貨組合保證金已足額',true);return;}
+  let totalDue=0;
+  idxs.forEach(idx=>{totalDue+=futureMarginCallDue(p.futures[idx]);});
+  if((p.cash||0)<totalDue){showOrderToast(`${p.name} 現金不足，補滿此組期貨保證金需 ${totalDue.toLocaleString()} G`,false);return;}
+  idxs.forEach(idx=>addFutureMargin(idx,{silent:true}));
+  showOrderToast(`✓ ${p.name} 補足此組期貨保證金 ${totalDue.toLocaleString()} G`,true);
+  renderAll();refreshSheetData();pushW();
+}
 function addFutureMargin(idx){
+  const opts=arguments[1]||{};
   if(!requireActiveUnlock())return;
   const p=W.players[activePidx];if(!p||!(p.futures||[])[idx])return;
   const f=p.futures[idx];
@@ -2836,6 +2884,7 @@ function addFutureMargin(idx){
   f.marginAdded=(Number(f.marginAdded)||0)+due;
   f.lastMarginTopUp=`${W.gameYear||1}年第${W.gameDay||1}日`;
   recordPlayerTrade(p,{time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:`${p.name} 補足《${a.name}》期貨保證金 ${due.toLocaleString()} G`,assetId:a.id,assetName:a.name,product:'future',side:'margin',qty:Number(f.contracts)||0,price:quotePrice(a),gross:due,fee:0,pnl:0,type:'time'});
+  if(opts.silent)return;
   showOrderToast(`✓ ${p.name} 補足《${a.name}》期貨保證金 ${due.toLocaleString()} G`,true);
   addTradeLog({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
   renderAll();refreshSheetData();pushW();
@@ -3029,7 +3078,7 @@ function renderPortGrid(){
         <div class="port-row2"><span style="font-size:10px;color:var(--gold2)">做空損益</span><span class="port-pnl ${cls}">${sign}${Math.round(pnl).toLocaleString()}G (${pctSign}${pct.toFixed(1)}%)</span></div>
       </div>`;
     });
-    futures.forEach(f=>{
+    groupedFutures(p).forEach(f=>{
       const a=W.assets.find(x=>x.id===f.assetId);if(!a)return;
       const pnl=futurePnL(f);const pct=futurePnLPct(f);
       const cls=pnl>=0?'pnl-pos':'pnl-neg';const sign=pnl>=0?'+':'';const pctSign=pct>=0?'+':'';
@@ -3038,7 +3087,7 @@ function renderPortGrid(){
       const needsCall=isFutureMarginCall(f);
       const stopWarn=needsCall?'<span style="font-size:9px;background:#c0392b;color:#fff;padding:1px 4px;margin-left:3px">⚠收盤前補保證金</span>':'';
       const pidx_future=W.players.indexOf(p);
-      const fidx=(p.futures||[]).indexOf(f);
+      const fkey=encodeURIComponent(futureGroupKey(f));
       itemsHtml+=`<div class="port-item" style="border-left:2px solid #2c5f8a" onclick="openSheetFromPort('${f.assetId}','sell',${pidx_future},'future')" title="點擊開啟期貨平倉">
         <div class="port-row1">
           <div class="port-l"><span class="port-icon">${a.icon}</span>
@@ -3046,7 +3095,7 @@ function renderPortGrid(){
           <div style="text-align:right"><div class="port-mktval">${Math.round(f.margin||0).toLocaleString()}G</div><div class="port-cost">保證金</div></div>
         </div>
         <div class="port-row2"><span style="font-size:10px;color:#2c5f8a">權益 ${Math.round(equity).toLocaleString()} / 維持 ${Math.round(maint).toLocaleString()} / 原始 ${Math.round(initial).toLocaleString()}${due>0?`・應補 ${due.toLocaleString()}`:''}</span><span class="port-pnl ${cls}">${sign}${Math.round(pnl).toLocaleString()}G (${pctSign}${pct.toFixed(1)}%)</span></div>
-        ${needsCall&&due>0?`<div style="margin-top:6px"><button class="btn-close-short" onclick="event.stopPropagation();addFutureMarginFor(${pidx_future},${fidx})" style="border-color:#2c5f8a;color:#2c5f8a">補保證金</button></div>`:''}
+        ${needsCall&&due>0?`<div style="margin-top:6px"><button class="btn-close-short" onclick="event.stopPropagation();addFutureMarginGroupFor(${pidx_future},'${fkey}')" style="border-color:#2c5f8a;color:#2c5f8a">補保證金</button></div>`:''}
       </div>`;
     });
     const unrCls=unr>=0?'pnl-pos':'pnl-neg';const rlzCls=rlz>=0?'pnl-pos':'pnl-neg';
