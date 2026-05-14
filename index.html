@@ -803,6 +803,16 @@ function intradayLast(P){return P?.points?.[P.points.length-1]||null;}
 function intradayChg(a){const P=intradayPlan(a),pt=intradayLast(P);return P&&pt&&P.prevClose?(pt.price-P.prevClose)/P.prevClose:gc(a);}
 function quotePrice(a){const P=intradayPlan(a),pt=intradayLast(P);if(Number.isFinite(pt?.price))return pt.price;const h=a.history;if(h&&h.length)return h[h.length-1];return a.price;}
 function quoteBase(a){return intradayPlan(a)?.prevClose||a.history?.[a.history.length-2]||a.price;}
+function marketTradeState(){
+  const S=W?.market?.intraday;
+  const finalSlot=INTRADAY_SLOTS.length-1;
+  if(!S)return{open:false,label:'待開盤'};
+  if(S.status!=='open')return{open:false,label:S.status==='closed'?'已收盤':'待開盤'};
+  if((S.slot||0)>=finalSlot)return{open:false,label:'已收盤'};
+  return{open:true,label:'開盤中'};
+}
+function isMarketTradeOpen(){return marketTradeState().open;}
+function marketClosedToast(){const st=marketTradeState();return st.label==='已收盤'?'⛔ 今日已收盤，玩家交易已暫停':'⛔ 目前尚未開盤，玩家交易已暫停';}
 const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
 const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
 const WATCH_RULES={
@@ -1966,6 +1976,7 @@ function switchTab(mode){
   const lUp=a?isLimitUp(a):false;
   const lDn=a?isLimitDn(a):false;
   const isSuspended=a&&W?.suspended&&W.suspended.includes(a.id);
+  const tradeState=marketTradeState();
 
   if(isSuspended){
     btn.className='action-btn';
@@ -1973,6 +1984,16 @@ function switchTab(mode){
     btn.style.borderColor='#888';
     btn.style.color='#888';
     btn.textContent='⏸ 交易暫停中';
+    btn.disabled=true;
+    si.classList.add('hidden');if(fi)fi.classList.add('hidden');sp.classList.add('hidden');
+    updateOrderTotal();return;
+  }
+  if(!tradeState.open){
+    btn.className='action-btn';
+    btn.style.background='rgba(100,100,100,0.15)';
+    btn.style.borderColor='#888';
+    btn.style.color='#888';
+    btn.textContent=tradeState.label==='已收盤'?'⛔ 已收盤，暫停交易':'⛔ 待開盤，暫停交易';
     btn.disabled=true;
     si.classList.add('hidden');if(fi)fi.classList.add('hidden');sp.classList.add('hidden');
     updateOrderTotal();return;
@@ -2785,6 +2806,7 @@ function renderShortPositions(){
 
 function closeShort(idx){
   if(!requireActiveUnlock())return;
+  if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);return;}
   const p=W.players[activePidx];if(!p||!(p.shorts||[])[idx])return;
   if(typeof p.realizedPnL!=='number')p.realizedPnL=0;
   p._tv=(p._tv||0)+1;
@@ -2854,6 +2876,7 @@ function addFutureMarginGroupFor(pidx,key){
     renderPlayerChips();
   }
   if(!requireActiveUnlock())return;
+  if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);return;}
   const p=W.players[activePidx];if(!p||!p.futures)return;
   const idxs=p.futures
     .map((f,idx)=>({f,idx}))
@@ -2870,6 +2893,7 @@ function addFutureMarginGroupFor(pidx,key){
 function addFutureMargin(idx){
   const opts=arguments[1]||{};
   if(!requireActiveUnlock())return;
+  if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);return;}
   const p=W.players[activePidx];if(!p||!(p.futures||[])[idx])return;
   const f=p.futures[idx];
   const a=W.assets.find(x=>x.id===f.assetId);if(!a)return;
@@ -2906,6 +2930,7 @@ async function doMainAction(){
   if(!requireActiveUnlock())return;
   await syncWorldBeforeTrade();
   if(!requireActiveUnlock())return;
+  if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);switchTab(orderMode);return;}
   const a=W.assets.find(x=>x.id===selAssetId);
   if(!a||a.delisted){showOrderToast('⚠ 無法找到此商品',false);return;}
   if(W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
