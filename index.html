@@ -1774,7 +1774,7 @@ function drawIntradayChart(a){
   const pad={l:58,r:16,t:18,b:34}, w=Wd-pad.l-pad.r, h=Hd-pad.t-pad.b;
   for(let i=0;i<INTRADAY_SLOTS.length;i++){if(i%20!==0&&i!==INTRADAY_SLOTS.length-1)continue;const x=pad.l+i/(INTRADAY_SLOTS.length-1)*w;ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+h);ctx.stroke();}
   if(!P||!pts.length){
-    ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px Noto Sans TC, sans-serif';ctx.fillText('尚未開盤，等待 GM 日內盤資料',pad.l,pad.t+28);return;
+    ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px Noto Sans TC, sans-serif';ctx.fillText('今日尚未開盤',pad.l,pad.t+28);return;
   }
   // 依 slot 去重：同一 slot 只保留最後一個點，消除舊資料密集造成的混亂折線
   const slotMap=new Map();pts.forEach(p=>{slotMap.set(p.slot,p);});
@@ -3523,7 +3523,7 @@ function drawIndexIntradayChart(){
   for(let i=0;i<=_totalSlots;i++){const step=Math.max(1,Math.round(_totalSlots/16));if(i%step!==0&&i!==_totalSlots)continue;const sx=pad.l+(i/_totalSlots)*w;ctx.beginPath();ctx.moveTo(sx,pad.t);ctx.lineTo(sx,pad.t+h);ctx.stroke();}
   if(!P||!pts.length){
     ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px sans-serif';ctx.textAlign='left';
-    ctx.fillText(P?.isNight?'夜盤尚未開盤':'尚未開盤，等待 GM 推進日內盤',pad.l+4,pad.t+28);return;
+    ctx.fillText(P?.isNight?'夜盤尚未開盤':'今日尚未開盤',pad.l+4,pad.t+28);return;
   }
   const slotMap=new Map();pts.forEach(p=>{slotMap.set(p.slot,p);});
   const drawPts=[...slotMap.values()].sort((a,b)=>a.slot-b.slot);
@@ -3594,7 +3594,7 @@ function drawIndexHistChart(type){
   ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
   if(baseHist.length<2){
     ctx.fillStyle='rgba(106,72,32,0.7)';ctx.font='13px sans-serif';ctx.textAlign='left';
-    ctx.fillText('歷史資料不足，請等待 GM 推進更多日期',20,80);return;
+    ctx.fillText('歷史資料累積中，請稍後查看',20,80);return;
   }
   const candles=buildCandles(baseHist,'__mkt_index__');
   const SHOW=Math.min(candles.length,60);
@@ -3675,7 +3675,7 @@ function renderPlayMarketIndex(){
   if(!el||!W)return;
   const I=W?.market?.index;
   if(!I||!I.day){
-    el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:4px 0">指數資料尚未建立，請 GM 推進日內盤。</div>';
+    el.innerHTML='<div style="font-size:12px;color:var(--ink3);padding:4px 0">指數資料尚未建立。</div>';
     return;
   }
   const D=I.day;
