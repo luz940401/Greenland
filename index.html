@@ -618,7 +618,7 @@ firebase.auth().signInAnonymously().catch(()=>{});
     </div>
   </div>
   <div class="sheet-chart-wrap" style="position:relative;overflow:hidden;touch-action:pan-y">
-    <canvas id="idxIntradayChart" height="360" style="width:100%;cursor:crosshair"></canvas>
+    <canvas id="idxIntradayChart" height="440" style="width:100%;min-height:420px;cursor:crosshair"></canvas>
     <canvas id="idxHistChart" height="360" style="width:100%;cursor:crosshair;display:none"></canvas>
     <div id="idxChartTooltip" style="display:none;position:absolute;background:rgba(20,12,4,0.92);border:1px solid var(--gold);padding:7px 11px;font-size:11px;color:#f5e9ce;pointer-events:none;z-index:10;line-height:1.8;white-space:nowrap;"></div>
   </div>
@@ -839,7 +839,7 @@ const ASSET_DESC={
 };
 
 let W=null, busy=false;
-let activePidx=-1, selAssetId=null, orderMode='buy', orderProduct='stock'; // -1 = 尚未選擇玩家
+let activePidx=-1, selAssetId=null, orderMode='buy', orderProduct='stock', orderFutureCloseSide=null; // -1 = 尚未選擇玩家
 let marketSortByChg=false, marketCatFilter='all';
 const PLAYER_UNLOCKS=new Set();
 let orderToastTimer=null;
@@ -2072,6 +2072,7 @@ function sheetNavAsset(dir){
 
 function openSheet(id){
   selAssetId=id;orderMode='buy';orderProduct='stock';
+  orderFutureCloseSide=null;
   _chartAsset=W?.assets.find(x=>x.id===id)||null;
   _chartOffset=0;
   _chartShowAll=true;
@@ -2084,7 +2085,7 @@ function openSheet(id){
 }
 
 // 從持倉卡片點擊開啟：自動切換到對應玩家，並預設 tab
-function openSheetFromPort(assetId, mode, pidx, product='stock'){
+function openSheetFromPort(assetId, mode, pidx, product='stock', futureCloseSide=null){
   // 切換到該持倉的玩家
   if(pidx >= 0 && pidx !== activePidx){
     if(!isPlayerUnlocked(pidx)){showOrderToast('\u26a0 \u8acb\u5148\u8f38\u5165\u8a72\u89d2\u8272\u5bc6\u78bc',false);return;}
@@ -2095,6 +2096,7 @@ function openSheetFromPort(assetId, mode, pidx, product='stock'){
   _chartAsset=W?.assets.find(x=>x.id===assetId)||null;
   orderProduct = product||'stock';
   orderMode = mode;
+  orderFutureCloseSide = orderProduct==='future' ? (futureCloseSide||null) : null;
   _chartOffset = 0;
   _chartShowAll = true;
   document.getElementById('sheetOverlay').classList.add('open');
@@ -2111,6 +2113,7 @@ function closeSheet(){
 }
 function switchProduct(product, resetQty=true){
   orderProduct=product||'stock';
+  if(orderProduct!=='future')orderFutureCloseSide=null;
   ['stock','odd','future'].forEach(k=>{
     const id=k==='stock'?'productStock':k==='odd'?'productOdd':'productFuture';
     const el=document.getElementById(id);
@@ -2123,11 +2126,11 @@ function switchProduct(product, resetQty=true){
   }
   const fast=document.getElementById('qtyFastBtn');
   if(fast)fast.textContent=orderProduct==='odd'?'+0.01':'+10';
-  if(orderProduct==='future'&&orderMode==='sell')orderMode='buy';
   switchTab(orderMode);
 }
 function switchTab(mode){
   orderMode=mode;
+  if(orderProduct==='future'&&mode!=='sell')orderFutureCloseSide=null;
   const buyLbl=document.getElementById('tabBuy'),sellLbl=document.getElementById('tabSell'),shortLbl=document.getElementById('tabShort');
   if(orderProduct==='future'){
     if(buyLbl)buyLbl.textContent='▲ 多單';
@@ -2183,7 +2186,7 @@ function switchTab(mode){
       btn.disabled=lUp;
     }else if(mode==='sell'){
       btn.className='action-btn btn-sell';
-      btn.textContent='◆ 平倉期貨';
+      btn.textContent=orderFutureCloseSide==='short'?'◆ 平倉期貨空單':orderFutureCloseSide==='long'?'◆ 平倉期貨多單':'◆ 平倉期貨';
       btn.disabled=false;
     }else{
       btn.className='action-btn btn-short';
@@ -2978,14 +2981,17 @@ function renderShortPositions(){
   });
 }
 
-function closeShort(idx){
+async function closeShort(idx){
+  if(busy){showOrderToast('⚠ 正在儲存中，請稍後再試',false);return;}
+  if(!requireActiveUnlock())return;
+  if(!await syncWorldBeforeTrade())return;
   if(!requireActiveUnlock())return;
   if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);return;}
   const p=W.players[activePidx];if(!p||!(p.shorts||[])[idx])return;
   if(typeof p.realizedPnL!=='number')p.realizedPnL=0;
-  p._tv=(p._tv||0)+1;
   const s=p.shorts[idx];
   const a=W.assets.find(x=>x.id===s.assetId);if(!a)return;
+  const beforeTradeSnapshot=JSON.stringify(W);
 
   // 暫停交易時無法平倉（買不回）
   if(W.suspended&&W.suspended.includes(a.id)){
@@ -2998,6 +3004,9 @@ function closeShort(idx){
   }
   if(!tryWatchTrade(a,'cover',p))return;
 
+  beginTradeGuard();
+  _preTradeCash=p.cash;
+  p._tv=(p._tv||0)+1;
   const pnl=shortPnL(s);
   // 平倉 = 買回，收 2% 手續費（從返還本金+損益中扣除）
   const closeFee=Math.round((s.principal+pnl)*0.02);
@@ -3012,15 +3021,22 @@ function closeShort(idx){
   showOrderToast(`✓ ${msg}`,(pnl-closeFee)>=0);
   if(!W.log)W.log=[];
   addTradeLog({time:`${W.gameYear||1}年第${W.gameDay||1}日`,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:pnl>=0?'good':'bad',uid:logUid()});
-  renderShortPositions();renderAll();refreshSheetData();pushW();
+  renderShortPositions();renderAll();refreshSheetData();
+  const savedOk=await pushW();
+  if(savedOk===false){
+    W=sanitizeWorld(migrateAssets(JSON.parse(beforeTradeSnapshot)));
+    renderAll();refreshSheetData();
+    return;
+  }
+  renderAll();
 }
 
-function closeFuturesByQty(p,a,qty){
+function closeFuturesByQty(p,a,qty,side=null){
   if(!p.futures)p.futures=[];
   let remaining=qty, realized=0, released=0, closed=0;
   for(let i=0;i<p.futures.length&&remaining>0;i++){
     const f=p.futures[i];
-    if(!f||f.assetId!==a.id)continue;
+    if(!f||f.assetId!==a.id||(side&&f.side!==side))continue;
     const c=Number(f.contracts)||0;
     const take=Math.min(c,remaining);
     if(take<=0)continue;
@@ -3042,7 +3058,8 @@ function addFutureMarginFor(pidx,idx){
   }
   addFutureMargin(idx);
 }
-function addFutureMarginGroupFor(pidx,key){
+async function addFutureMarginGroupFor(pidx,key){
+  if(busy){showOrderToast('⚠ 正在儲存中，請稍後再試',false);return;}
   key=decodeURIComponent(key||'');
   if(pidx >= 0 && pidx !== activePidx){
     if(!isPlayerUnlocked(pidx)){showOrderToast('⚠ 請先輸入該角色密碼',false);return;}
@@ -3050,8 +3067,11 @@ function addFutureMarginGroupFor(pidx,key){
     renderPlayerChips();
   }
   if(!requireActiveUnlock())return;
+  if(!await syncWorldBeforeTrade())return;
+  if(!requireActiveUnlock())return;
   if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);return;}
   const p=W.players[activePidx];if(!p||!p.futures)return;
+  const beforeTradeSnapshot=JSON.stringify(W);
   const idxs=p.futures
     .map((f,idx)=>({f,idx}))
     .filter(x=>futureGroupKey(x.f)===key&&futureMarginCallDue(x.f)>0)
@@ -3060,9 +3080,32 @@ function addFutureMarginGroupFor(pidx,key){
   let totalDue=0;
   idxs.forEach(idx=>{totalDue+=futureMarginCallDue(p.futures[idx]);});
   if((p.cash||0)<totalDue){showOrderToast(`${p.name} 現金不足，補滿此組期貨保證金需 ${totalDue.toLocaleString()} G`,false);return;}
-  idxs.forEach(idx=>addFutureMargin(idx,{silent:true}));
+  beginTradeGuard();
+  _preTradeCash=p.cash;
+  p._tv=(p._tv||0)+1;
+  p.cash-=totalDue;
+  const timeTag=`${W.gameYear||1}年第${W.gameDay||1}日`;
+  idxs.forEach(idx=>{
+    const f=p.futures[idx];
+    if(!f)return;
+    const due=futureMarginCallDue(f);
+    if(due<=0)return;
+    f.margin=(Number(f.margin)||0)+due;
+    f.marginAdded=(Number(f.marginAdded)||0)+due;
+    f.lastMarginTopUp=timeTag;
+    const a=W.assets.find(x=>x.id===f.assetId);
+    recordPlayerTrade(p,{time:timeTag,text:`${p.name} 補足《${a?a.name:f.assetId}》期貨保證金 ${due.toLocaleString()} G`,assetId:f.assetId,assetName:a?a.name:f.assetId,product:'future',side:'margin',qty:Number(f.contracts)||0,price:a?quotePrice(a):0,gross:due,fee:0,pnl:0,type:'time'});
+  });
+  addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:'good',uid:logUid()});
   showOrderToast(`✓ ${p.name} 補足此組期貨保證金 ${totalDue.toLocaleString()} G`,true);
-  renderAll();refreshSheetData();pushW();
+  renderAll();refreshSheetData();
+  const savedOk=await pushW();
+  if(savedOk===false){
+    W=sanitizeWorld(migrateAssets(JSON.parse(beforeTradeSnapshot)));
+    renderAll();refreshSheetData();
+    return;
+  }
+  renderAll();
 }
 function addFutureMargin(idx){
   const opts=arguments[1]||{};
@@ -3125,18 +3168,20 @@ async function doMainAction(){
     if(orderMode==='buy'&&isLimitUp(a)){showOrderToast(`⛔ ${a.name} 漲停中，無法建立期貨多單`,false);return;}
     if(orderMode==='short'&&isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法建立期貨空單`,false);return;}
     if(orderMode==='sell'){
-      const held=(p.futures||[]).filter(f=>f.assetId===a.id).reduce((s,f)=>s+(Number(f.contracts)||0),0);
-      if(held<q){showOrderToast(`${p.name} 期貨口數不足！持有 ${fmtQty(held)} 口`,false);return;}
+      const closeSide=orderFutureCloseSide||(p.futures||[]).find(f=>f.assetId===a.id)?.side||null;
+      const held=(p.futures||[]).filter(f=>f.assetId===a.id&&(!closeSide||f.side===closeSide)).reduce((s,f)=>s+(Number(f.contracts)||0),0);
+      if(held<q){showOrderToast(`${p.name} 期貨${closeSide==='short'?'空':'多'}單口數不足！持有 ${fmtQty(held)} 口`,false);return;}
       if(!tryWatchTrade(a,'futureClose',p))return;
       beginTradeGuard();
       _preTradeCash=p.cash;
       p._tv=(p._tv||0)+1;
-      const r=closeFuturesByQty(p,a,q);
+      const r=closeFuturesByQty(p,a,q,closeSide);
       p.cash+=r.released+r.realized;
       p.realizedPnL+=r.realized;
       const sign=r.realized>=0?'+':'';
-      const msg=`${p.name} 平倉《${a.name}》期貨 ${fmtQty(r.closed)} 口，損益 ${sign}${Math.round(r.realized).toLocaleString()} G`;
-      recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:'future',side:'close',qty:r.closed,price:quotePrice(a),gross:r.released+r.realized,fee:0,pnl:r.realized,type:r.realized>=0?'good':'bad'});
+      const sideText=closeSide==='short'?'空單':'多單';
+      const msg=`${p.name} 平倉《${a.name}》期貨${sideText} ${fmtQty(r.closed)} 口，損益 ${sign}${Math.round(r.realized).toLocaleString()} G`;
+      recordPlayerTrade(p,{time:timeTag,text:msg,assetId:a.id,assetName:a.name,product:'future',side:closeSide==='short'?'closeShort':'closeLong',qty:r.closed,price:quotePrice(a),gross:r.released+r.realized,fee:0,pnl:r.realized,type:r.realized>=0?'good':'bad'});
       showOrderToast(`✓ ${msg}`,r.realized>=0);
       addTradeLog({time:timeTag,text:privateTradeText(p.name),actor:p.name,privateTrade:true,type:r.realized>=0?'good':'bad',uid:logUid()});
     }else{
@@ -3293,7 +3338,7 @@ function renderPortGrid(){
       const stopWarn=needsCall?'<span style="font-size:9px;background:#c0392b;color:#fff;padding:1px 4px;margin-left:3px">⚠收盤前補保證金</span>':'';
       const pidx_future=W.players.indexOf(p);
       const fkey=encodeURIComponent(futureGroupKey(f));
-      itemsHtml+=`<div class="port-item" style="border-left:2px solid #2c5f8a" onclick="openSheetFromPort('${f.assetId}','sell',${pidx_future},'future')" title="點擊開啟期貨平倉">
+      itemsHtml+=`<div class="port-item" style="border-left:2px solid #2c5f8a" onclick="openSheetFromPort('${f.assetId}','sell',${pidx_future},'future','${f.side}')" title="點擊開啟期貨平倉">
         <div class="port-row1">
           <div class="port-l"><span class="port-icon">${a.icon}</span>
             <div><div class="port-iname">期貨${side} ${a.name}${stopWarn}</div><div class="port-qty">${side}×${fmtQty(f.contracts)}・進${Math.round(f.entryPrice).toLocaleString()}G</div></div></div>
@@ -3498,22 +3543,46 @@ let _idxChartType='intraday';
 const _idxMaActive=new Set();
 let _idxChartOffset=0;
 
+function derivedIndexHistory(){
+  const I=W?.market?.index;
+  const assets=(W?.assets||[]).filter(a=>a&&!a.delisted&&Array.isArray(a.history)&&a.history.length);
+  if(!I||!assets.length)return [];
+  const maxLen=Math.max(...assets.map(a=>a.history.length));
+  const base=I.base||10000;
+  const out=[];
+  for(let i=0;i<maxLen;i++){
+    let sum=0,totalW=0;
+    assets.forEach(a=>{
+      const h=a.history||[];
+      const hi=Math.max(0,h.length-maxLen+i);
+      const price=Number(h[hi]);
+      if(!Number.isFinite(price)||price<=0)return;
+      const b=Number(I.basePrices?.[a.id])||Number(h[0])||Number(a.price)||1;
+      const w=Number(I.weights?.[a.id])||1;
+      sum+=w*(price/Math.max(1,b));
+      totalW+=w;
+    });
+    if(totalW>0)out.push(Math.round(base*sum/totalW));
+  }
+  return out;
+}
+function indexHistoryForChart(){
+  const I=W?.market?.index;if(!I)return [];
+  const saved=(I.history||[]).filter(v=>Number.isFinite(Number(v))&&Number(v)>0).map(v=>Math.round(Number(v)));
+  const derived=derivedIndexHistory();
+  const hist=derived.length>saved.length?derived:saved;
+  const today=I.day?.price?Math.round(I.day.price):null;
+  if(today&&hist[hist.length-1]!==today)return hist.concat(today);
+  return hist;
+}
+
 function indexIntradayPlan(){
   const I=W?.market?.index;if(!I)return null;
-  // 夜盤開盤中時優先顯示夜盤走勢（類台指期夜盤）
-  const N=I.night;
-  if(N?.status==='open'&&(N.points||[]).length>0){
-    return{
-      points:N.points,prevClose:N.prevClose||I.day?.price||I.base||10000,
-      price:N.price,high:N.high,low:N.low,
-      isNight:true,maxSlot:N.maxSlot||82
-    };
-  }
   if(!I.day)return null;
   return{
     points:I.day.points||[],prevClose:I.day.prevClose||I.base||10000,
     price:I.day.price,high:I.day.high,low:I.day.low,
-    isNight:false,maxSlot:340
+    isNight:false,maxSlot:INTRADAY_SLOTS.length-1
   };
 }
 
@@ -3542,12 +3611,12 @@ function _updateIdxHeader(){
   document.getElementById('idxSheetChg').textContent=sign+pct.toFixed(2)+'%';
   document.getElementById('idxSheetChg').style.color=col;
   document.getElementById('idxSheetSub').textContent=`加權指數 · ${D.status==='open'?'交易中':'已收盤'}`;
-  const hist=I.history||[];
+  const hist=indexHistoryForChart();
   document.getElementById('idxSheetStats').innerHTML=
     `<div class="stat-cell"><div class="stat-val" style="color:var(--up)">${Math.round(D.high||dayPrice).toLocaleString()}</div><div class="stat-lbl">今日最高</div></div>`+
     `<div class="stat-cell"><div class="stat-val" style="color:var(--dn)">${Math.round(D.low||dayPrice).toLocaleString()}</div><div class="stat-lbl">今日最低</div></div>`+
     `<div class="stat-cell"><div class="stat-val">${dayPrev.toLocaleString()}</div><div class="stat-lbl">昨日收盤</div></div>`+
-    `<div class="stat-cell"><div class="stat-val">${hist.length+1}</div><div class="stat-lbl">記錄天數</div></div>`;
+    `<div class="stat-cell"><div class="stat-val">${Math.max(1,hist.length)}</div><div class="stat-lbl">記錄天數</div></div>`;
   const rb=document.getElementById('idxSheetRangeBar');
   if(hist.length>=2){
     rb.innerHTML=[{lbl:'近7日',days:7},{lbl:'近30日',days:30},{lbl:'近90日',days:90}].map(r=>{
@@ -3585,23 +3654,28 @@ function drawIndexSpk(cid){
   const ctx=c.getContext('2d');
   const dpr=Math.min(window.devicePixelRatio||1,3);
   const CW=Math.max(96,Math.round(c.clientWidth||c.width||360));
-  const CH=Math.max(44,Math.round(c.clientHeight||c.height||56));
+  const CH=Math.max(92,Math.round(c.clientHeight||c.height||104));
   if(c.width!==CW*dpr){c.width=CW*dpr;c.style.width=CW+'px';}
   if(c.height!==CH*dpr){c.height=CH*dpr;c.style.height=CH+'px';}
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.clearRect(0,0,CW,CH);
   if(!P||!P.points||!P.points.length){
-    const I=W?.market?.index;
-    const h2=(I?.history||[]).slice(-20);
+    const h2=indexHistoryForChart().slice(-20);
     if(h2.length>1){
-      const mn=Math.min(...h2),mx=Math.max(...h2),rng=mx-mn||1;
-      ctx.strokeStyle=h2[h2.length-1]>=h2[0]?'#e03020':'#18a050';ctx.lineWidth=1;ctx.beginPath();
-      h2.forEach((v,i)=>{const x=(i/(h2.length-1))*CW,y=(CH-4)-((v-mn)/rng)*(CH-8);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+      const mn=Math.min(...h2),mx=Math.max(...h2),rawRng=mx-mn||1,pad=rawRng*0.18;
+      const lo=mn-pad,hi=mx+pad,rng=hi-lo||1;
+      ctx.strokeStyle=h2[h2.length-1]>=h2[0]?'#e03020':'#18a050';ctx.lineWidth=1.8;ctx.beginPath();
+      h2.forEach((v,i)=>{const x=(i/(h2.length-1))*CW,y=(CH-10)-((v-lo)/rng)*(CH-20);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
     }
     return;
   }
   const pts=P.points;
-  const mn=P.prevClose*0.9,mx=P.prevClose*1.1,rng=mx-mn||1;
+  const prices=pts.map(p=>Number(p.price)).filter(v=>Number.isFinite(v)&&v>0).concat([P.prevClose]);
+  const rawMin=Math.min(...prices),rawMax=Math.max(...prices);
+  const minSpan=Math.max(P.prevClose*0.025,20);
+  const span=Math.max(rawMax-rawMin,minSpan);
+  const mid=(rawMax+rawMin)/2;
+  const mn=Math.max(1,mid-span*0.68),mx=mid+span*0.68,rng=mx-mn||1;
   ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,CW,CH);
   const baseY=CH-((P.prevClose-mn)/rng)*CH;
   const redGrad=ctx.createLinearGradient(0,0,0,baseY);
@@ -3610,14 +3684,14 @@ function drawIndexSpk(cid){
   greenGrad.addColorStop(0,'rgba(24,160,80,0)');greenGrad.addColorStop(1,'rgba(24,160,80,.30)');
   fillMiniArea(ctx,pts,P,true,CW,CH,redGrad,mn,mx);
   fillMiniArea(ctx,pts,P,false,CW,CH,greenGrad,mn,mx);
-  ctx.strokeStyle='rgba(106,72,32,0.28)';ctx.lineWidth=0.5;
+  ctx.strokeStyle='rgba(106,72,32,0.28)';ctx.lineWidth=0.8;
   ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(CW,baseY);ctx.stroke();ctx.setLineDash([]);
   drawMiniLineSegments(ctx,pts,P,CW,CH,mn,mx);
   const lp=pts[pts.length-1];
   const _spkMax=P.maxSlot||(INTRADAY_SLOTS.length-1);
   const lx=(lp.slot/_spkMax)*CW,ly=CH-((lp.price-mn)/rng)*CH;
   ctx.fillStyle=lp.price>=P.prevClose?'#e03020':'#18a050';
-  ctx.beginPath();ctx.arc(lx,ly,2,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(lx,ly,2.6,0,Math.PI*2);ctx.fill();
 }
 
 function drawIndexIntradayChart(){
@@ -3625,27 +3699,29 @@ function drawIndexIntradayChart(){
   const P=indexIntradayPlan(),pts=P?.points||[];
   const wrap=c.parentElement;
   const dpr=Math.min(window.devicePixelRatio||1,2);
-  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2)),Hd=360;
+  const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2));
+  const Hd=Math.max(420,Math.min(520,Math.round((window.innerHeight||720)*0.48)));
   c.width=Wd*dpr;c.height=Hd*dpr;c.style.width=Wd+'px';c.style.height=Hd+'px';
   const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,Wd,Hd);
   ctx.fillStyle='rgba(255,255,255,0.16)';ctx.fillRect(0,0,Wd,Hd);
   const pad={l:60,r:16,t:18,b:34},w=Wd-pad.l-pad.r,h=Hd-pad.t-pad.b;
-  // 支援夜盤（maxSlot=82）與日盤（maxSlot=340）的 X 軸縮放
   const _totalSlots=P?.maxSlot||(INTRADAY_SLOTS.length-1);
-  // 建立時間標籤陣列：夜盤用 NIGHT_SLOTS 概念（5分/格），日盤用 INTRADAY_SLOTS
-  const _timeLabels=P?.isNight
-    ?(()=>{const s=[];for(let m=5;m<=415;m+=5){const hh=Math.floor(m/60),mn=m%60;s.push(`${String(hh).padStart(2,'0')}:${String(mn).padStart(2,'0')}`);}return s;})()
-    :INTRADAY_SLOTS;
+  const _timeLabels=INTRADAY_SLOTS;
   ctx.strokeStyle='rgba(106,72,32,0.22)';ctx.lineWidth=1;
   for(let i=0;i<=_totalSlots;i++){const step=Math.max(1,Math.round(_totalSlots/16));if(i%step!==0&&i!==_totalSlots)continue;const sx=pad.l+(i/_totalSlots)*w;ctx.beginPath();ctx.moveTo(sx,pad.t);ctx.lineTo(sx,pad.t+h);ctx.stroke();}
   if(!P||!pts.length){
     ctx.fillStyle='rgba(106,72,32,0.75)';ctx.font='13px sans-serif';ctx.textAlign='left';
-    ctx.fillText(P?.isNight?'夜盤尚未開盤':'今日尚未開盤',pad.l+4,pad.t+28);return;
+    ctx.fillText('今日尚未開盤',pad.l+4,pad.t+28);return;
   }
   const slotMap=new Map();pts.forEach(p=>{slotMap.set(p.slot,p);});
   const drawPts=[...slotMap.values()].sort((a,b)=>a.slot-b.slot);
-  const min=P.prevClose*0.9,max=P.prevClose*1.1,rng=max-min||1;
+  const prices=drawPts.map(p=>Number(p.price)).filter(v=>Number.isFinite(v)&&v>0).concat([P.prevClose]);
+  const rawMin=Math.min(...prices),rawMax=Math.max(...prices);
+  const minSpan=Math.max(P.prevClose*0.035,30);
+  const span=Math.max(rawMax-rawMin,minSpan);
+  const mid=(rawMax+rawMin)/2;
+  const min=Math.max(1,mid-span*0.62),max=mid+span*0.62,rng=max-min||1;
   const xf=slot=>pad.l+(slot/_totalSlots)*w;
   const yf=price=>pad.t+(max-price)/rng*h;
   const baseY=yf(P.prevClose);
@@ -3665,7 +3741,7 @@ function drawIndexIntradayChart(){
   const _lblStep=Math.max(1,Math.round(_timeLabels.length/8));
   _timeLabels.forEach((s,i)=>{if(i%_lblStep===0||i===_timeLabels.length-1)ctx.fillText(s.replace(' 收盤',''),pad.l+(i/_totalSlots)*w,Hd-7);});
   ctx.textAlign='left';ctx.font='13px sans-serif';
-  const _session=P.isNight?'夜盤':'日內';
+  const _session='日內';
   ctx.fillStyle=ch>=0?'#c0392b':'#27ae60';
   ctx.fillText(`${_session} ${ch>=0?'+':''}${ch.toFixed(2)}%  指數 ${lp.price.toLocaleString()}`,pad.l,pad.t+14);
   ctx.textAlign='right';ctx.font='11px sans-serif';
@@ -3701,8 +3777,7 @@ function _showIdxTooltip(e,c,P,layout){
 function drawIndexHistChart(type){
   const c=document.getElementById('idxHistChart');if(!c)return;
   const I=W?.market?.index;if(!I)return;
-  const baseHist=[...(I.history||[])];
-  if(I.day&&I.day.price&&baseHist[baseHist.length-1]!==Math.round(I.day.price))baseHist.push(Math.round(I.day.price));
+  const baseHist=indexHistoryForChart();
   const wrap=c.parentElement;
   const dpr=Math.min(window.devicePixelRatio||1,2);
   const Wd=Math.max(280,Math.round((wrap?.clientWidth||c.clientWidth||320)-2)),Hd=360;
@@ -3797,46 +3872,24 @@ function renderPlayMarketIndex(){
     return;
   }
   const D=I.day;
-  const N=I.night||{};
-  const nightOpen=N.status==='open';
-  if(tag){tag.textContent=nightOpen?'夜盤開盤中':'日盤';tag.style.color=nightOpen?'var(--dn)':'var(--ink3)';}
-  let mainHtml='';
-  if(nightOpen){
-    // 夜盤開盤：以夜盤指數為主要顯示，日盤收盤價作為昨收參考
-    const nPrice=N.price||(D.price||I.base||10000);
-    const nPrev=N.prevClose||(D.price||I.base||10000);
-    const nPct=(nPrice-nPrev)/Math.max(1,nPrev)*100;
-    const nSign=nPct>=0?'+':'';
-    const nCol=nPct>=0?'var(--up)':'var(--dn)';
-    const dayRef=D.price||I.base||10000;
-    mainHtml=`<div style="flex:1;min-width:160px">
-      <div style="font-size:10px;color:var(--dn);font-weight:900;letter-spacing:1px;margin-bottom:2px">🌙 ${I.name||'格蘭大陸加權指數'}　夜盤</div>
-      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-        <span style="font-size:36px;font-weight:900;color:${nCol};line-height:1.1">${Math.round(nPrice).toLocaleString()}</span>
-        <span style="font-size:15px;color:${nCol};font-weight:800">${nSign}${nPct.toFixed(2)}%</span>
-      </div>
-      <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(N.high||nPrice).toLocaleString()} ／ 低 ${Math.round(N.low||nPrice).toLocaleString()}</div>
-      <div style="font-size:11px;color:var(--ink3);margin-top:3px">日盤收盤（昨收基準）：${Math.round(dayRef).toLocaleString()}</div>
-    </div>`;
-  }else{
-    const dayPrice=D.price||I.base||10000;
-    const dayPrev=D.prevClose||I.base||10000;
-    const dayPct=(dayPrice-dayPrev)/Math.max(1,dayPrev)*100;
-    const daySign=dayPct>=0?'+':'';
-    const dayCol=dayPct>=0?'var(--up)':'var(--dn)';
-    mainHtml=`<div style="flex:1;min-width:160px">
-      <div style="font-size:10px;color:var(--ink3);font-weight:800;letter-spacing:1px;margin-bottom:2px">${I.name||'格蘭大陸加權指數'}　日盤</div>
-      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
-        <span style="font-size:36px;font-weight:900;color:${dayCol};line-height:1.1">${dayPrice.toLocaleString()}</span>
-        <span style="font-size:15px;color:${dayCol};font-weight:800">${daySign}${dayPct.toFixed(2)}%</span>
-      </div>
-      <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(D.high||dayPrice).toLocaleString()} ／ 低 ${Math.round(D.low||dayPrice).toLocaleString()}</div>
-    </div>`;
-  }
+  if(tag){tag.textContent='日盤';tag.style.color='var(--ink3)';}
+  const dayPrice=D.price||I.base||10000;
+  const dayPrev=D.prevClose||I.base||10000;
+  const dayPct=(dayPrice-dayPrev)/Math.max(1,dayPrev)*100;
+  const daySign=dayPct>=0?'+':'';
+  const dayCol=dayPct>=0?'var(--up)':'var(--dn)';
+  const mainHtml=`<div style="flex:1;min-width:160px">
+    <div style="font-size:10px;color:var(--ink3);font-weight:800;letter-spacing:1px;margin-bottom:2px">${I.name||'格蘭大陸加權指數'}　日盤</div>
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <span style="font-size:36px;font-weight:900;color:${dayCol};line-height:1.1">${dayPrice.toLocaleString()}</span>
+      <span style="font-size:15px;color:${dayCol};font-weight:800">${daySign}${dayPct.toFixed(2)}%</span>
+    </div>
+    <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(D.high||dayPrice).toLocaleString()} ／ 低 ${Math.round(D.low||dayPrice).toLocaleString()}</div>
+  </div>`;
   el.innerHTML=`<div onclick="openIndexSheet()" style="cursor:pointer;display:flex;align-items:flex-start;gap:0;flex-wrap:wrap">
     ${mainHtml}
   </div>
-  <canvas id="idxSpkCanvas" height="40" style="width:100%;height:40px;display:block;margin-top:8px;cursor:pointer" onclick="openIndexSheet()"></canvas>`;
+  <canvas id="idxSpkCanvas" height="104" style="width:100%;height:104px;display:block;margin-top:14px;cursor:pointer" onclick="openIndexSheet()"></canvas>`;
   requestAnimationFrame(()=>drawIndexSpk('idxSpkCanvas'));
 }
 
