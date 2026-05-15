@@ -2226,8 +2226,13 @@ function switchTab(mode){
       btn.disabled=lUp;
     }else if(mode==='sell'){
       btn.className='action-btn btn-sell';
-      btn.textContent=orderFutureCloseSide==='short'?'◆ 平倉期貨空單':orderFutureCloseSide==='long'?'◆ 平倉期貨多單':'◆ 平倉期貨';
-      btn.disabled=false;
+      const p=activePidx>=0?W.players[activePidx]:null;
+      const closeSide=orderFutureCloseSide||(p?.futures||[]).find(f=>f.assetId===a.id)?.side||null;
+      const closeBlocked=closeSide==='short'?lUp:lDn;
+      btn.textContent=closeBlocked
+        ? (closeSide==='short'?'⛔ 漲停中，無法平空':'⛔ 跌停中，無法平多')
+        : orderFutureCloseSide==='short'?'◆ 平倉期貨空單':orderFutureCloseSide==='long'?'◆ 平倉期貨多單':'◆ 平倉期貨';
+      btn.disabled=closeBlocked;
     }else{
       btn.className='action-btn btn-short';
       btn.textContent=lDn?'⛔ 跌停中，無法做空':'↓ 建立期貨空單';
@@ -3213,6 +3218,8 @@ async function doMainAction(){
     if(orderMode==='short'&&isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法建立期貨空單`,false);return;}
     if(orderMode==='sell'){
       const closeSide=orderFutureCloseSide||(p.futures||[]).find(f=>f.assetId===a.id)?.side||null;
+      if(closeSide==='long'&&isLimitDn(a)){showOrderToast(`⛔ ${a.name} 跌停中，無法平倉期貨多單（賣不掉）`,false);return;}
+      if(closeSide==='short'&&isLimitUp(a)){showOrderToast(`⛔ ${a.name} 漲停中，無法平倉期貨空單（買不到）`,false);return;}
       const held=(p.futures||[]).filter(f=>f.assetId===a.id&&(!closeSide||f.side===closeSide)).reduce((s,f)=>s+(Number(f.contracts)||0),0);
       if(held<q){showOrderToast(`${p.name} 期貨${closeSide==='short'?'空':'多'}單口數不足！持有 ${fmtQty(held)} 口`,false);return;}
       if(!tryWatchTrade(a,'futureClose',p))return;
