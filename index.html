@@ -83,6 +83,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;background:li
 .mkt-name-desktop{display:inline;}
 .daytrade-badge{display:inline-block;margin-top:4px;padding:2px 7px;border:1px solid var(--gold);background:rgba(184,134,11,0.08);color:var(--gold2);font-size:10px;font-weight:900;letter-spacing:1px;}
 .daytrade-line{font-size:10px;color:var(--gold2);margin-top:3px;line-height:1.5;}
+.holding-badge{display:inline-block;margin-left:4px;margin-top:3px;padding:2px 7px;border:1px solid rgba(184,134,11,0.55);background:rgba(184,134,11,0.12);color:var(--gold2);font-size:10px;font-weight:900;line-height:1.2;vertical-align:middle;white-space:nowrap;}
+.holding-badge.short{border-color:rgba(39,174,96,0.45);background:rgba(39,174,96,0.10);color:var(--dn);}
+.holding-badge.future-long{border-color:rgba(192,57,43,0.40);background:rgba(192,57,43,0.10);color:var(--up);}
+.holding-badge.future-short{border-color:rgba(44,95,138,0.40);background:rgba(44,95,138,0.10);color:#2c5f8a;}
 /* 漲停跌停（台股樣式） */
 .mkt-table tr.is-limit-up td,.mkt-table tr.is-limit-dn td{background:transparent !important;}
 .mkt-table tr.is-limit-up .mkt-price-main,.mkt-table tr.is-limit-dn .mkt-price-main{display:inline-block;color:#fff!important;padding:2px 6px;line-height:1.15;min-width:48px;text-align:center;}
@@ -980,6 +984,20 @@ function dayTradeBadge(assetId){
   const hit=(d.offsets||[]).some(x=>x.assetId===assetId);
   return hit?'<div class="daytrade-badge">當日沖銷</div>':'';
 }
+function holdingBadgesForAsset(a,p=null){
+  p=p||(isPlayerUnlocked(activePidx)?W?.players?.[activePidx]:null);
+  if(!a||!p)return '';
+  const out=[];
+  const pos=getPos(p,a.id);
+  if(pos.qty>0)out.push(`<span class="holding-badge">現股 ${fmtQty(pos.qty)}</span>`);
+  const shortQty=(p.shorts||[]).filter(s=>s&&s.assetId===a.id).reduce((s,x)=>s+(Number(x.shortQty)||0),0);
+  if(shortQty>0)out.push(`<span class="holding-badge short">空單 ${fmtQty(shortQty)}</span>`);
+  const futLong=(p.futures||[]).filter(f=>f&&f.assetId===a.id&&f.side!=='short').reduce((s,x)=>s+(Number(x.contracts)||0),0);
+  const futShort=(p.futures||[]).filter(f=>f&&f.assetId===a.id&&f.side==='short').reduce((s,x)=>s+(Number(x.contracts)||0),0);
+  if(futLong>0)out.push(`<span class="holding-badge future-long">期多 ${fmtQty(futLong)}</span>`);
+  if(futShort>0)out.push(`<span class="holding-badge future-short">期空 ${fmtQty(futShort)}</span>`);
+  return out.join('');
+}
 function groupIdFromName(name){return 'grp_'+String(name||'group').replace(/[^\w\u4e00-\u9fa5]+/g,'_').slice(0,28);}
 function defaultAssetGroups(assetList=[]){
   const ids=new Set((assetList.length?assetList.map(a=>a.id):ASSETS0_IDS)), used=new Set(), groups=[];
@@ -1723,12 +1741,10 @@ function renderMkt(){
     tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
     tr.onclick=()=>{closeGroupView();openSheet(a.id);};
 const badge=(lUp?'<span class="limit-badge up">\u6f32\u505c</span>':lDn?'<span class="limit-badge dn">\u8dcc\u505c</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">\u505c\u724c</span>':'')+watchBadge(a);
-    const p=isPlayerUnlocked(activePidx)?W.players[activePidx]:null;
-    const pos=p?getPos(p,a.id):{qty:0};
-    const heldBadge=pos.qty>0?`<span style="font-size:10px;color:var(--gold2);margin-left:4px">持${pos.qty}</span>`:'';
+    const holdingBadges=holdingBadgesForAsset(a);
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="mkc_${a.id}" width="24" height="58"></canvas></td>
-      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${heldBadge}</div>${dayTradeBadge(a.id)}</td>
+      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${holdingBadges}</div>${dayTradeBadge(a.id)}</td>
       <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${quotePrice(a).toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
       <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(quotePrice(a)-quoteBase(a)).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="spk_${a.id}" width="420" height="82"></canvas></td>
@@ -2007,10 +2023,11 @@ function openGroupView(gid){
     tr.className='asset-row'+(lUp?' is-limit-up':lDn?' is-limit-dn':isSuspended?' is-suspended':'');
     tr.onclick=()=>{closeGroupView();openSheet(a.id);};
 const badge=(lUp?'<span class="limit-badge up">\u6f32\u505c</span>':lDn?'<span class="limit-badge dn">\u8dcc\u505c</span>':isSuspended?'<span class="limit-badge" style="background:#888;color:#fff">\u505c\u724c</span>':'')+watchBadge(a);
+    const holdingBadges=holdingBadgesForAsset(a);
     const base=quoteBase(a);
     tr.innerHTML=`
       <td class="candle-col"><canvas class="mkt-candle" id="gmkc_${a.id}" width="24" height="58"></canvas></td>
-      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}</div></td>
+      <td class="mkt-main-cell"><div class="mkt-name-main"><span class="mkt-name-desktop">${a.name}</span><span class="mkt-name-mobile">${assetNameHtml(a.name)}</span></div><div class="mkt-name-sub">${a.cat}${badge}${holdingBadges}</div></td>
       <td class="mkt-price-cell"><div class="mkt-price-main" style="color:${col}">${quotePrice(a).toLocaleString()}</div><div style="font-size:10px;color:var(--ink3)">G</div></td>
       <td class="mkt-chg-cell"><div class="mkt-chg-main" style="color:${col}">${ch>=0?'▲':'▼'} ${sign}${(quotePrice(a)-base).toFixed(0)}</div><div class="mkt-chg-main" style="color:${col}">${sign}${pct}%</div></td>
       <td class="chart-col"><canvas class="mkt-spk" id="gspk_${a.id}" width="420" height="82"></canvas></td>
