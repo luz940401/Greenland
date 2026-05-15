@@ -849,12 +849,25 @@ const PLAYER_UNLOCKS=new Set();
 let orderToastTimer=null;
 const PENDING_TRADE_LOG_KEY='gran_pending_trade_logs_v1';
 const TRADE_GUARD_UNTIL_KEY='gran_trade_guard_until_v1';
+const MARKET_INDEX_ASSET_ID='__market_index__';
 
 const upCol='#c0392b', dnCol='#27ae60';
 const chCol=ch=>ch>=0?upCol:dnCol;
 const sn=d=>{const m=Math.floor(((d-1)%360)/30);return SEASONS[m]+'之日';};
 const gc=a=>{const h=a.history;return h.length<2?0:(h[h.length-1]-h[h.length-2])/h[h.length-2];};
-function intradayPlan(a){return W?.market?.intraday?.plans?.[a.id]||null;}
+function isMarketIndexAsset(aOrId){return (typeof aOrId==='string'?aOrId:aOrId?.id)===MARKET_INDEX_ASSET_ID;}
+function marketIndexAsset(){
+  const I=W?.market?.index;if(!I)return null;
+  const D=I.day||{};
+  const hist=indexHistoryForChart?.()||I.history||[];
+  const price=Math.round(D.price||hist[hist.length-1]||I.base||10000);
+  return{id:MARKET_INDEX_ASSET_ID,name:I.name||'格蘭大陸加權指數',cat:'大盤基金',icon:'📊',price,history:hist.length?hist:[price],virtual:true,indexAsset:true,desc:'追蹤格蘭大陸全市場加權指數，由所有投資標的依權重共同決定，適合作為穩定的大型標的。'};
+}
+function getAssetById(id){return isMarketIndexAsset(id)?marketIndexAsset():(W?.assets||[]).find(x=>x.id===id&&!x.delisted)||null;}
+function intradayPlan(a){
+  if(isMarketIndexAsset(a))return W?.market?.index?.day||null;
+  return W?.market?.intraday?.plans?.[a.id]||null;
+}
 function clientRealIntradaySlot(){
   const now=new Date();
   const h=now.getHours(), m=now.getMinutes();
@@ -905,8 +918,8 @@ function marketTradeState(){
 }
 function isMarketTradeOpen(){return marketTradeState().open;}
 function marketClosedToast(){const st=marketTradeState();return st.label==='已收盤'?'⛔ 今日已收盤，玩家交易已暫停':'⛔ 目前尚未開盤，玩家交易已暫停';}
-const isLimitUp=a=>intradayChg(a)>=DAILY_LIMIT*0.98;
-const isLimitDn=a=>intradayChg(a)<=-DAILY_LIMIT*0.98;
+const isLimitUp=a=>!isMarketIndexAsset(a)&&intradayChg(a)>=DAILY_LIMIT*0.98;
+const isLimitDn=a=>!isMarketIndexAsset(a)&&intradayChg(a)<=-DAILY_LIMIT*0.98;
 const WATCH_RULES={
   notice:{label:'\u6ce8\u610f\u80a1',cls:'notice',buy:0.90,sell:0.85,short:0.70,cover:0.85},
   disposition:{label:'\u8655\u7f6e\u80a1',cls:'disposition',buy:0.55,sell:0.45,short:0.25,cover:0.45}
@@ -918,6 +931,7 @@ function recentGain(a,days){
   return old>0?(now-old)/old:0;
 }
 function tradeWatchInfo(a){
+  if(isMarketIndexAsset(a))return null;
   const g3=recentGain(a,3), g5=recentGain(a,5), g6=recentGain(a,6), g10=recentGain(a,10);
   // 處置股：比照台股「連3日注意→處置」精神
   // 近3日漲跌≈連3板，或近5/6/10日累積過熱
@@ -1252,7 +1266,7 @@ function parseOrderQty(){
   if(!Number.isFinite(raw))return 0;
   return orderProduct==='odd'?Math.round(raw*1000)/1000:Math.floor(raw);
 }
-function pvOf(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const a=W.assets.find(x=>x.id===id&&!x.delisted);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
+function pvOf(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const a=getAssetById(id);const pos=getPos(p,id);return s+(a?quotePrice(a)*pos.qty:0);},0);}
 function totalCost(p){return Object.keys(p.portfolio||{}).reduce((s,id)=>{const pos=getPos(p,id);return s+(pos.avgCost*pos.qty);},0);}
 function shortPnL(s){const a=W?.assets.find(x=>x.id===s.assetId);if(!a)return 0;return s.shortQty*(s.entryPrice-quotePrice(a));}
 function shortPnLPct(s){return s.principal>0?shortPnL(s)/s.principal*100:0;}
@@ -2075,7 +2089,7 @@ function drawGroupChart(assets){
 }
 function sheetNavAsset(dir){
   if(!W) return;
-  const active = W.assets.filter(a=>!a.delisted);
+  const active = [...W.assets.filter(a=>!a.delisted),marketIndexAsset()].filter(Boolean);
   const idx = active.findIndex(a=>a.id===selAssetId);
   if(idx===-1) return;
   const next = active[(idx+dir+active.length)%active.length];
@@ -2090,7 +2104,7 @@ function sheetNavAsset(dir){
 function openSheet(id){
   selAssetId=id;orderMode='buy';orderProduct='stock';
   orderFutureCloseSide=null;
-  _chartAsset=W?.assets.find(x=>x.id===id)||null;
+  _chartAsset=getAssetById(id);
   _chartOffset=0;
   _chartShowAll=true;
   document.getElementById('sheetOverlay').classList.add('open');
@@ -2110,7 +2124,7 @@ function openSheetFromPort(assetId, mode, pidx, product='stock', futureCloseSide
     renderPlayerChips();
   }
   selAssetId = assetId;
-  _chartAsset=W?.assets.find(x=>x.id===assetId)||null;
+  _chartAsset=getAssetById(assetId);
   orderProduct = product||'stock';
   orderMode = mode;
   orderFutureCloseSide = orderProduct==='future' ? (futureCloseSide||null) : null;
@@ -2129,12 +2143,16 @@ function closeSheet(){
   document.getElementById('bottomSheet').classList.remove('open');
 }
 function switchProduct(product, resetQty=true){
+  if(isMarketIndexAsset(selAssetId)&&product==='future')product='stock';
   orderProduct=product||'stock';
   if(orderProduct!=='future')orderFutureCloseSide=null;
   ['stock','odd','future'].forEach(k=>{
     const id=k==='stock'?'productStock':k==='odd'?'productOdd':'productFuture';
     const el=document.getElementById(id);
-    if(el)el.classList.toggle('active',k===orderProduct);
+    if(el){
+      el.classList.toggle('active',k===orderProduct);
+      el.style.display=isMarketIndexAsset(selAssetId)&&k==='future'?'none':'';
+    }
   });
   const inp=document.getElementById('qtyInput');
   if(inp){
@@ -2146,6 +2164,7 @@ function switchProduct(product, resetQty=true){
   switchTab(orderMode);
 }
 function switchTab(mode){
+  if(isMarketIndexAsset(selAssetId)&&mode==='short')mode='buy';
   orderMode=mode;
   if(orderProduct==='future'&&mode!=='sell')orderFutureCloseSide=null;
   const buyLbl=document.getElementById('tabBuy'),sellLbl=document.getElementById('tabSell'),shortLbl=document.getElementById('tabShort');
@@ -2158,6 +2177,7 @@ function switchTab(mode){
     if(sellLbl)sellLbl.textContent=orderProduct==='odd'?'▼ 零股賣出':'▼ 賣出';
     if(shortLbl)shortLbl.textContent='↓ 做空';
   }
+  if(shortLbl)shortLbl.style.display=isMarketIndexAsset(selAssetId)?'none':'';
   ['buy','sell','short'].forEach(m=>{
     const t=document.getElementById('tab'+m.charAt(0).toUpperCase()+m.slice(1));
     if(t)t.className='order-tab '+m+(m===mode?' active':'');
@@ -2166,12 +2186,15 @@ function switchTab(mode){
   const si=document.getElementById('shortInfo');
   const fi=document.getElementById('futureInfo');
   const sp=document.getElementById('shortPositions');
-  const a=W?.assets.find(x=>x.id===selAssetId);
+  const a=getAssetById(selAssetId);
   const lUp=a?isLimitUp(a):false;
   const lDn=a?isLimitDn(a):false;
   const isSuspended=a&&W?.suspended&&W.suspended.includes(a.id);
   const tradeState=marketTradeState();
 
+  if(isMarketIndexAsset(a)&&orderProduct==='future'){
+    switchProduct('stock',false);return;
+  }
   if(isSuspended){
     btn.className='action-btn';
     btn.style.background='rgba(100,100,100,0.15)';
@@ -2236,7 +2259,7 @@ function switchTab(mode){
 }
 function refreshSheetData(){
   if(!selAssetId||!W)return;
-  const a=W.assets.find(x=>x.id===selAssetId);if(!a||a.delisted)return;
+  const a=getAssetById(selAssetId);if(!a||a.delisted)return;
   const ch=intradayChg(a),pct=(ch*100).toFixed(2),sign=ch>=0?'+':'',col=chCol(ch);
   const lUp=isLimitUp(a),lDn=isLimitDn(a);
   document.getElementById('sheetIcon').textContent=a.icon;
@@ -2284,7 +2307,7 @@ function refreshSheetData(){
   else{descEl.style.display='none';}
   const groupEl=document.getElementById('sheetGroups');
   if(groupEl){
-    const groups=groupsForAsset(a.id);
+    const groups=isMarketIndexAsset(a)?[]:groupsForAsset(a.id);
     groupEl.innerHTML=groups.map(g=>`<button class="group-chip" onclick="openGroupView('${g.id}')">${g.name}</button>`).join('');
     groupEl.style.display=groups.length?'flex':'none';
   }
@@ -2310,7 +2333,7 @@ function refreshSheetData(){
     return;
   }
   const pos=getPos(p,a.id);
-  const futs=groupedFutures(p).filter(f=>f.assetId===a.id);
+  const futs=isMarketIndexAsset(a)?[]:groupedFutures(p).filter(f=>f.assetId===a.id);
   const futText=futs.length?`・期貨 ${futs.map(f=>(f.side==='short'?'空':'多')+'×'+fmtQty(f.contracts)).join('、')}`:'';
   document.getElementById('spbName').textContent=p.name;
   document.getElementById('spbCash').textContent=p.cash.toLocaleString()+' G 可用';
@@ -2320,7 +2343,7 @@ function refreshSheetData(){
   // 更新導覽列中間的位置標示
   const navLabel = document.getElementById('sheetNavLabel');
   if(navLabel && W){
-    const active = W.assets.filter(x=>!x.delisted);
+    const active = [...W.assets.filter(x=>!x.delisted),marketIndexAsset()].filter(Boolean);
     const idx = active.findIndex(x=>x.id===selAssetId);
     if(idx!==-1){
       const prev = active[(idx-1+active.length)%active.length];
@@ -2947,7 +2970,7 @@ function adjQty(n){
   updateOrderTotal();
 }
 function updateOrderTotal(){
-  const a=W?.assets.find(x=>x.id===selAssetId);
+  const a=getAssetById(selAssetId);
   const q=parseOrderQty();
   const el=document.getElementById('qtyTotal');if(!el)return;
   if(!a){el.innerHTML='合計：<strong>──</strong>';return;}
@@ -3165,9 +3188,10 @@ async function doMainAction(){
   if(!await syncWorldBeforeTrade())return;
   if(!requireActiveUnlock())return;
   if(!isMarketTradeOpen()){showOrderToast(marketClosedToast(),false);switchTab(orderMode);return;}
-  const a=W.assets.find(x=>x.id===selAssetId);
+  const a=getAssetById(selAssetId);
   if(!a||a.delisted){showOrderToast('⚠ 無法找到此商品',false);return;}
-  if(W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
+  const isIndexTrade=isMarketIndexAsset(a);
+  if(!isIndexTrade&&W.suspended&&W.suspended.includes(a.id)){showOrderToast(`⏸ ${a.name} 交易暫停中，無法操作`,false);return;}
   const q=parseOrderQty();
   if(q<=0){showOrderToast('⚠ 請輸入正確數量',false);return;}
   const p=W.players[activePidx];
@@ -3180,6 +3204,9 @@ async function doMainAction(){
   const timeTag=`${W.gameYear||1}年第${W.gameDay||1}日`;
   if(!W.log)W.log=[];
   const beforeTradeSnapshot=JSON.stringify(W);
+
+  if(isIndexTrade&&orderProduct==='future'){showOrderToast('⛔ 大盤暫不開放期貨',false);return;}
+  if(isIndexTrade&&orderMode==='short'){showOrderToast('⛔ 大盤暫不開放做空',false);return;}
 
   if(orderProduct==='future'){
     if(orderMode==='buy'&&isLimitUp(a)){showOrderToast(`⛔ ${a.name} 漲停中，無法建立期貨多單`,false);return;}
@@ -3227,7 +3254,7 @@ async function doMainAction(){
     const fee=Math.round(total*BUY_FEE_RATE);
     const payable=Math.ceil(total+fee);
     if(p.cash<payable){showOrderToast(`${p.name} 資金不足！需 ${payable.toLocaleString()} G（含手續費），僅有 ${p.cash.toLocaleString()} G`,false);return;}
-    if(!tryWatchTrade(a,'buy',p))return;
+    if(!isIndexTrade&&!tryWatchTrade(a,'buy',p))return;
     beginTradeGuard();
     _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
@@ -3246,7 +3273,7 @@ async function doMainAction(){
     // 重新讀取最新持倉數據，防止過期資料造成的誤判
     const latestPos=getPos(p,a.id);
     if(latestPos.qty<q){showOrderToast(`${p.name} 持貨不足！持有 ${fmtQty(latestPos.qty)} 份`,false);return;}
-    if(!tryWatchTrade(a,'sell',p))return;
+    if(!isIndexTrade&&!tryWatchTrade(a,'sell',p))return;
     beginTradeGuard();
     _preTradeCash=p.cash;
     p._tv=(p._tv||0)+1;
@@ -3315,7 +3342,7 @@ function renderPortGrid(){
     let itemsHtml='';
     if(!held.length&&!shorts.length&&!futures.length){itemsHtml='<div class="empty-port">尚無持倉</div>';}
     held.forEach(id=>{
-      const a=W.assets.find(x=>x.id===id);const pos=getPos(p,id);if(!a||!pos.qty)return;
+      const a=getAssetById(id);const pos=getPos(p,id);if(!a||!pos.qty)return;
       const mv=quotePrice(a)*pos.qty;const costVal=pos.avgCost*pos.qty;const pnl=mv-costVal;
       const s=pnl>=0?'+':'';const cls=pnl>=0?'pnl-pos':'pnl-neg';
       const rate=costVal>0?((pnl/costVal)*100).toFixed(1):'—';
@@ -3369,7 +3396,7 @@ function renderPortGrid(){
     const spcls=shortPnLTotal>=0?'pnl-pos':'pnl-neg';
     const fpcls=futurePnLTotal>=0?'pnl-pos':'pnl-neg';
     const todayTrades=p.dayTrades?.[tradeDayKey()]?.offsets||[];
-    const dayTradeHtml=todayTrades.length?`<div class="daytrade-line">當日沖銷：${todayTrades.slice(0,3).map(x=>{const a=W.assets.find(y=>y.id===x.assetId);return `${a?a.icon+' '+a.name:x.assetId}×${x.qty}`;}).join('、')}${todayTrades.length>3?'…':''}</div>`:'';
+    const dayTradeHtml=todayTrades.length?`<div class="daytrade-line">當日沖銷：${todayTrades.slice(0,3).map(x=>{const a=getAssetById(x.assetId);return `${a?a.icon+' '+a.name:x.assetId}×${x.qty}`;}).join('、')}${todayTrades.length>3?'…':''}</div>`:'';
     const card=document.createElement('div');card.className='player-card';
     card.innerHTML=`
       <div class="pcard-head">
@@ -3900,6 +3927,7 @@ function renderPlayMarketIndex(){
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
       <span style="font-size:36px;font-weight:900;color:${dayCol};line-height:1.1">${dayPrice.toLocaleString()}</span>
       <span style="font-size:15px;color:${dayCol};font-weight:800">${daySign}${dayPct.toFixed(2)}%</span>
+      <button onclick="event.stopPropagation();openSheet('${MARKET_INDEX_ASSET_ID}')" style="padding:6px 12px;border:1px solid var(--gold);background:rgba(184,134,11,0.12);color:var(--ink);font-family:'Noto Sans TC',sans-serif;font-size:12px;font-weight:900;cursor:pointer">交易大盤</button>
     </div>
     <div style="font-size:11px;color:var(--ink3);margin-top:4px">高 ${Math.round(D.high||dayPrice).toLocaleString()} ／ 低 ${Math.round(D.low||dayPrice).toLocaleString()}</div>
   </div>`;
