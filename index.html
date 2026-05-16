@@ -1541,7 +1541,10 @@ function intradayPlanCount(world){
 function isIncompleteIntradaySnapshot(world){
   const S=world?.market?.intraday;
   if(!S)return false;
-  if(S.plansSyncing)return true;
+  if(S.plansSyncing){
+    const started=Number(S.plansSyncingAt)||0;
+    return !started || Date.now()-started<120000;
+  }
   if(S.status==='open'){
     const active=activeAssetCount(world);
     const plans=intradayPlanCount(world);
