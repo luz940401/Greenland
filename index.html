@@ -1465,8 +1465,9 @@ async function pushW(){
             // 本地有新交易 → 以本地持倉為準，但現金需加回 GM 賞金差額
             if(i===activePidx&&_preTradeCash!==null){
               const delta=lp.cash-_preTradeCash;           // 本次交易的現金變動（買為負，賣為正）
-              const base=Math.max(fp.cash||0,_preTradeCash); // Firebase 現金（含 GM 賞金）與本地交易前現金取大
-              return{...lp,cash:Math.max(0,base+delta),tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};   // 套用相同的交易 delta
+              const gmCashIsNewer=(fp._cashAdjustedAt||0)>(lp._cashAdjustedAt||0);
+              const base=gmCashIsNewer?(fp.cash||0):Math.max(fp.cash||0,_preTradeCash); // Firebase 現金（含 GM 調整）與本地交易前現金合併
+              return{...lp,cash:Math.max(0,base+delta),_cashAdjustedAt:Math.max(lp._cashAdjustedAt||0,fp._cashAdjustedAt||0),tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};   // 套用相同的交易 delta
             }
             return{...lp,tradeHistory:mergeTradeHistory(lp.tradeHistory,fp.tradeHistory)};
           }
